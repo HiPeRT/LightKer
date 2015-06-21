@@ -101,12 +101,14 @@ int main(int argc, char **argv)
 	dim3 blknum = 2;
 	dim3 blkdim = (32);
 	int shmem = 0;
-	FILE *file;
+	FILE *file = NULL;
 	char s[10000];
 
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
 	assert(blkdim.x <= 32);
-	file = fopen(filename, "a");
+
+	if (filename)
+		file = fopen(filename, "a");
 
 	int wg = blknum.x;
 
@@ -297,7 +299,8 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	fprintf(file, "%d %s\n", blknum.x, s);
+	if (file)
+		fprintf(file, "%d %s\n", blknum.x, s);
 
 }
 
