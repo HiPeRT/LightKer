@@ -22,9 +22,9 @@
 #define MINBLOCK 1
 #endif
 
-char *filename = "data.txt";
+char *filename = NULL;
 
-inline void print_trigger(char *fun, trig_t * trig)
+inline void print_trigger(const char *fun, trig_t * trig)
 {
 	log("[%s] to_device %d, from_device %d\n", fun, _vcast(trig[0].to_device), _vcast(trig[0].from_device));
 }
@@ -46,7 +46,7 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 /* Assign the given element to the given sm.
  * Doesn't modify any trigger.
  */
-inline void assign_data(data_t * data, int sm, char *str)
+inline void assign_data(data_t * data, int sm, const char *str)
 {
 	strncpy(data[sm].str, str, L_MAX_LENGTH);
 	log("assigned data \"%s\" to thread %d\n", str, sm);
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 	GETTIME_TOC;
 	GETTIME_TIC;
 	GETTIME_TOC;
-	sprintf(s, "%lld", clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%ld", clock_getdiff_nsec(spec_start, spec_stop));
 	verb("overhead %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	trig_t *trig;
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaHostAlloc((void **)&data, wg * sizeof(data_t), cudaHostAllocDefault));
 	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	init(uniform_polling, trig, data, results, blkdim, blknum, shmem);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 	//print_trigger("after init", trig);
 
@@ -170,14 +170,14 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	assign_data(data, sm, "prova");
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	/** TRIGGER (WORK) **/
 	GETTIME_TIC;
 	work(trig, sm, blknum);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
     /* Profile sm_wait with the possibility to need to wait the GPU. */
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	sm_wait(trig, sm, blknum);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
     /* Profile sm_wait when it's useless (no need to wait the GPU). */
@@ -193,14 +193,14 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	sm_wait(trig, sm, blknum);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	/** RETRIEVE DATA **/
 	GETTIME_TIC;
 	int res = retrieve_data(trig, results, sm);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 // test if light_kernel works also with subsequent calls of work
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	dispose(trig, blknum);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMalloc(&d, wg * sizeof(data_t)));
 	checkCudaErrors(cudaMalloc(&d_resu, wg * sizeof(int)));
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	checkCudaErrors(cudaMemcpy(d, h_data, wg * sizeof(data_t), cudaMemcpyHostToDevice));
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	simple_kernel <<< blknum, blkdim, shmem >>> (d, d_resu);
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -270,7 +270,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	cudaDeviceSynchronize();
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	cudaDeviceSynchronize();
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("second wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -286,7 +286,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	checkCudaErrors(cudaGetLastError());
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
 	GETTIME_TIC;
 	checkCudaErrors(cudaMemcpy(h_res, d_resu, wg * sizeof(int), cudaMemcpyDeviceToHost));
 	GETTIME_TOC;
-	sprintf(s, "%s %lld", s, clock_getdiff_nsec(spec_start, spec_stop));
+	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	fprintf(file, "%d %s\n", blknum.x, s);
