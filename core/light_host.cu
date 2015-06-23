@@ -27,6 +27,11 @@
 #define MINBLOCK 1
 #endif
 
+/* Allocate space on host for data */
+void init_data(data_t **data, int wg);
+/* Assign the given element to the given sm. Doesn't modify any trigger. */
+void assign_data(data_t *data, void *payload, int sm);
+
 char *filename = NULL;
 
 inline void print_trigger(const char *fun, trig_t * trig)
@@ -47,12 +52,6 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 
 	kernel <<< blknum, blkdim, shmem >>> (trig, data, results);
 }
-
-void init_data(data_t **data, int wg);
-/* Assign the given element to the given sm.
- * Doesn't modify any trigger.
- */
-void assign_data(data_t *data, int sm);
 
 /* Order the given sm to start working. */
 void work(trig_t * trig, int sm, dim3 blknum)
@@ -92,8 +91,8 @@ void dispose(trig_t * trig, dim3 blknum)
 	checkCudaErrors(cudaGetLastError());
 
 //      cudaFreeHost(trig);
-//    cudaFreeHost(results);
-//    cudaDeviceReset();
+//      cudaFreeHost(results);
+//      cudaDeviceReset();
 }
 
 int main(int argc, char **argv)
@@ -169,7 +168,7 @@ int main(int argc, char **argv)
 
 	/** COPY_DATA (WORK) **/
 	GETTIME_TIC;
-	assign_data(data, sm);
+	assign_data(data, (void *)"prova", sm);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));

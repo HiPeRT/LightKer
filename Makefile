@@ -16,8 +16,9 @@ APPDIR = apps/example
 APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
 COREFILES = core/light_host.cu
 COREHEAD = core/light_kernel.cu core/light_host.h
+HEAD = head/head.h head/timer.h head/utils.h
 
-light_kernel: $(COREFILES) $(COREHEAD) $(APPFILES)
+light_kernel: $(COREFILES) $(COREHEAD) $(APPFILES) $(HEAD)
 	$(NVCC) -Ihead -I$(APPDIR) -o light_kernel $(COREFILES) -L $(NVCC_OPTS)
 
 .PHONY: clean

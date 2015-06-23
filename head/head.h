@@ -1,9 +1,7 @@
-#ifndef head
-#define head
+#ifndef __HEAD_H__
+#define __HEAD_H__
 
 #include "data.h"
-
-#define L_MAX_LENGTH 1024
 
 #define MAX_NUM_BLOCK 1024
 #define MAX_SHMEM 16000
@@ -63,4 +61,4 @@ __device__ unsigned long long int cuda_timers[ 1024*1024 ];
 #define clock_getdiff_nsec(start, stop) 0
 #endif
 
-#endif /*head*/
+#endif /* __HEAD_H__ */
