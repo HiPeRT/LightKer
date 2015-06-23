@@ -31,7 +31,7 @@ inline void print_trigger(const char *fun, trig_t * trig)
 }
 
 /* Initialize the triggers and start the kernel. */
-void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t * trig, data_t * data, int *results, dim3 blkdim, dim3 blknum, int shmem)
+void init(void (*kernel) (volatile trig_t *, volatile char *, int *), trig_t *trig, char *data, int *results, dim3 blkdim, dim3 blknum, int shmem)
 {
 	int wg = blknum.x;
 
@@ -44,14 +44,11 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 	kernel <<< blknum, blkdim, shmem >>> (trig, data, results);
 }
 
+void init_data(void **data, int wg);
 /* Assign the given element to the given sm.
  * Doesn't modify any trigger.
  */
-inline void assign_data(data_t * data, int sm, const char *str)
-{
-	strncpy(data[sm].str, str, L_MAX_LENGTH);
-	log("assigned data \"%s\" to thread %d\n", str, sm);
-}
+void assign_data(void *data, int sm);
 
 /* Order the given sm to start working. */
 void work(trig_t * trig, int sm, dim3 blknum)
@@ -125,7 +122,7 @@ int main(int argc, char **argv)
 	verb("overhead %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	trig_t *trig;
-	data_t *data;
+	char *data;
 	int *results;
 
 	/** BOOT (INIT) **/
@@ -149,7 +146,7 @@ int main(int argc, char **argv)
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
-	checkCudaErrors(cudaHostAlloc((void **)&data, wg * sizeof(data_t), cudaHostAllocDefault));
+	init_data((void **)&data, wg);
 	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
@@ -168,7 +165,7 @@ int main(int argc, char **argv)
 
 	/** COPY_DATA (WORK) **/
 	GETTIME_TIC;
-	assign_data(data, sm, "prova");
+	assign_data((void *)data, sm);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));

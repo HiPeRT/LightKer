@@ -23,7 +23,7 @@ __device__ void sleep()
    it acknowledges the CPU and starts the real work. When finished
    it acknowledges the CPU through the trigger "from_device"
  */
-__global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, int *results)
+__global__ void uniform_polling(volatile trig_t *trig, volatile char *data, int *results)
 {
 	int blkid = blockIdx.x;
 
@@ -41,7 +41,7 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 			if (to_device == THREAD_WORK && trig[blkid].from_device == THREAD_NOP) {
                 trig[blkid].from_device = THREAD_WORKING;
 				log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
-				results[blkid] = work_nocuda(data[blkid]);
+				results[blkid] = work_nocuda(data_dereference(data, blkid));
 				log("Work finished! Set data[%d].from_device to THREAD_FINISHED, results[%d] is %d\n",
 				     blkid, blkid, results[blkid]);
 				_vcast(trig[blkid].from_device) = THREAD_FINISHED;
@@ -56,7 +56,7 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
    it acknowledges the CPU and starts the real work. When finished
    it acknowledges the CPU through the trigger "from_device"
  */
-__global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *data, int *results)
+__global__ void uniform_polling_cuda(volatile trig_t *trig, volatile char *data, int *results)
 {
     int blkid = blockIdx.x;
     int tid = threadIdx.x;
@@ -75,7 +75,7 @@ __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *dat
                 if (tid == 0)
                     trig[blkid].from_device = THREAD_WORKING;
                 log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
-                results[blkid] = work_cuda(data[blkid]);
+                results[blkid] = work_cuda(data_dereference(data, blkid));
                 log("work finished! Set data[%d].from_device to THREAD_FINISHED, results[%d] is %d\n",
                      blkid, blkid, results[blkid]);
                 if (tid == 0)
