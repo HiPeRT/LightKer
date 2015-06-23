@@ -51,17 +51,12 @@ __global__ void isKindOf(syncon_t *s, int *synconid, int *n_dads,int *dads,int *
 
 /************************************* MAIN ***********************************/
 
-int main() 
-{
-	totSize =0; 
-	totSize += sizeof(syncon_t)*NSYNCON;
+int curr_i[NSYNCON]; 
+syncon_t *s;
+int *n_dads, *dads, *syncon, *result;
 
-	//PARTE HOST
-	int curr_i[NSYNCON]; 
-	syncon_t *s;
-	int *n_dads, *dads,*syncon,*result;
-	FILE *infile;
-	struct timespec spec_start, spec_stop;
+void init_data(data_t **data, int numblocks) {
+	// PARTE HOST
 
 	checkCudaErrors(cudaHostAlloc((void **)&s, NSYNCON*sizeof(syncon_t), cudaHostAllocDefault));
 	checkCudaErrors(cudaHostAlloc((void**)&dads, NBLOCKS*MAXDADS*sizeof(int),cudaHostAllocDefault));
@@ -74,7 +69,7 @@ int main()
 	contDadsAndSons (s);
 	readTable(s,curr_i);
 
-	//PARTE DEVICE
+	// PARTE DEVICE
 	syncon_t *d_s, *temp_s;
 	int *d_dads,*d_result,*d_n_dads,*d_syncon;
 
@@ -96,6 +91,20 @@ int main()
 	checkCudaErrors(cudaMalloc((void**)&d_syncon, NBLOCKS*sizeof(int)));
 	checkCudaErrors(cudaMalloc((void**)&d_n_dads, NBLOCKS*sizeof(int)));
 	checkCudaErrors(cudaMalloc((void**)&d_result,NBLOCKS*sizeof(int)));
+
+	checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
+}
+
+int main() 
+{
+	totSize =0; 
+	totSize += sizeof(syncon_t)*NSYNCON;
+
+	//PARTE HOST
+	FILE *infile;
+	struct timespec spec_start, spec_stop;
+
+
 
 	//printf("La dimensione totale è %f MB\n\n",(float)totSize/1024/1024);
 	
