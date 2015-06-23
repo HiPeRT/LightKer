@@ -1,9 +1,9 @@
 #include "../../head/head.h"
 #include "../../head/utils.h"
 
-void init_data(data_t **data, int wg)
+void init_data(data_t **data, int numblocks)
 {
-	checkCudaErrors(cudaHostAlloc((void **)data, wg * sizeof(data_t), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
 }
 
 void assign_data(data_t *data, void *payload, int sm)
