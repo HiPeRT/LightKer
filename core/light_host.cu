@@ -165,7 +165,6 @@ int main(int argc, char **argv)
 
 	int sm = 0;
 
-
 	/** COPY_DATA (WORK) **/
 	GETTIME_TIC;
 	assign_data(data, (void *)"prova", sm);
