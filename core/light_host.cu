@@ -96,13 +96,13 @@ void dispose(trig_t * trig, dim3 blknum)
 
 int main(int argc, char **argv)
 {
-    verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
-
 	dim3 blknum = 2;
 	dim3 blkdim = (32);
 	int shmem = 0;
 	FILE *file = NULL;
 	char s[10000];
+
+	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
 
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
 	assert(blkdim.x <= 32);
@@ -113,10 +113,9 @@ int main(int argc, char **argv)
 	int wg = blknum.x;
 
 	struct timespec spec_start, spec_stop;
-    verb("blknum.x : %d\n", blknum.x);
+	verb("blknum.x : %d\n", blknum.x);
 
-
-    /** OVERHEAD **/
+	/** OVERHEAD **/
 	GETTIME_TIC;
 	GETTIME_TOC;
 	GETTIME_TIC;
@@ -128,8 +127,7 @@ int main(int argc, char **argv)
 	data_t *data;
 	int *results;
 
-
-    /** BOOT (INIT) **/
+	/** BOOT (INIT) **/
 	int *arr;
 	GETTIME_TIC;
 	checkCudaErrors(cudaMalloc(&arr, 1024 * sizeof(int)));
@@ -145,9 +143,9 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %lld", s, t_boot);
 	verb("boot(init) %lld\n", t_boot);
 
-    verb("\n\nLight kernel:\n");
+	verb("\n\nLight kernel:\n");
 
-    /** ALLOC (INIT) **/
+	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
 	checkCudaErrors(cudaHostAlloc((void **)&data, wg * sizeof(data_t), cudaHostAllocDefault));
@@ -156,8 +154,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-
-    /** SPAWN (INIT) **/
+	/** SPAWN (INIT) **/
 	GETTIME_TIC;
 	init(uniform_polling, trig, data, results, blkdim, blknum, shmem);
 	GETTIME_TOC;
@@ -182,7 +179,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-    /* Profile sm_wait with the possibility to need to wait the GPU. */
+	/* Profile sm_wait with the possibility to need to wait the GPU. */
 	/** WAIT **/
 	GETTIME_TIC;
 	sm_wait(trig, sm, blknum);
@@ -190,7 +187,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-    /* Profile sm_wait when it's useless (no need to wait the GPU). */
+	/* Profile sm_wait when it's useless (no need to wait the GPU). */
 	/** WAIT (USELESS) **/
 	GETTIME_TIC;
 	sm_wait(trig, sm, blknum);
@@ -230,12 +227,12 @@ int main(int argc, char **argv)
 	/**** DEFAULT KERNEL ****/
 	data_t *d;
 	int *d_resu;
-    verb("\n\nDefault kernel:\n");
+	verb("\n\nDefault kernel:\n");
 
-    verb("boot(init): it's independent of the kernel type. Needed only on"
+	verb("boot(init): it's independent of the kernel type. Needed only on"
             "the first execution of a kernel in the program.\n");
 
-    /** AlLOC (INIT) **/
+	/** AlLOC (INIT) **/
 	GETTIME_TIC;
 	checkCudaErrors(cudaMalloc(&d, wg * sizeof(data_t)));
 	checkCudaErrors(cudaMalloc(&d_resu, wg * sizeof(int)));
@@ -244,10 +241,10 @@ int main(int argc, char **argv)
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
-    /** COPY DATA **/
-    // non prendo i tempi della memorizzazione su host.
-    data_t *h_data;
-    h_data = (data_t *)malloc(wg * sizeof(data_t));
+	/** COPY DATA **/
+	// non prendo i tempi della memorizzazione su host.
+	data_t *h_data;
+	h_data = (data_t *)malloc(wg * sizeof(data_t));
 	for (int i = 0; i < blknum.x; i++) {
 		sprintf(h_data[i].str, "Ciao mondo, %d", i);
 	}
