@@ -4,20 +4,20 @@
 # Compiler: nvcc
 #
 
-NVCC = nvcc
+NVCC=nvcc
+
 NVCC_OPTS = -O2 # -Xcompiler -Wall
 NVCC_OPTS += $(param)
 
-all: light_kernel
+CUDA_INCLUDEPATH=/opt/cuda/include
 
-APP = example
+APPFILES = apps/example/example.cu
+COREFILES = core/light_kernel.cu core/light_host.cu
+COREHEAD = core/light_host.h
 
-light_kernel:
-	$(MAKE) -C core light_kernel
-	$(MAKE) -C apps/$(APP)
-	$(NVCC) -o light_kernel core/light_host.o apps/$(APP)/$(APP).o -L $(NVCC_OPTS)
+light_kernel: $(COREFILES) $(COREHEAD) $(APPFILES)
+	$(NVCC) -o light_kernel $(COREFILES) $(APPFILES) -L $(NVCC_OPTS)
 
+.PHONY: clean
 clean:
-	make -C core clean
-	make -C apps/$(APP) clean
 	rm -f *.o light_kernel
