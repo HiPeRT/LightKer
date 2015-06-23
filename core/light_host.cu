@@ -3,17 +3,18 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
-#include "utils.h"
 #include <unistd.h>
-#include "head.h"
-#include "light_host.h"
-#include "light_kernel.cu"
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include <inttypes.h>
 #include <getopt.h>
 #include <stdlib.h>
+
+#include "../head/utils.h"
+#include "../head/head.h"
+#include "light_host.h"
+#include "light_kernel.cu"
 
 #define MAX_BLOCKS 128
 #define MAX_BLK_DIM 32

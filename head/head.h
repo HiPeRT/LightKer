@@ -65,4 +65,7 @@ __device__ unsigned long long int cuda_timers[ 1024*1024 ];
 #define clock_getdiff_nsec(start, stop) 0
 #endif
 
+extern __device__ int work_nocuda(volatile data_t data);
+extern __device__ int work_cuda(volatile data_t data);
+
 #endif /*head*/
