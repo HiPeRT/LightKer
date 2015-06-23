@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 
-
+#if 0
 	/**** DEFAULT KERNEL ****/
 	data_t *d;
 	int *d_resu;
@@ -298,6 +298,7 @@ int main(int argc, char **argv)
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+#endif
 
 	if (file)
 		fprintf(file, "%d %s\n", blknum.x, s);
