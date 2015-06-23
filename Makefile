@@ -11,12 +11,14 @@ NVCC_OPTS += $(param)
 
 CUDA_INCLUDEPATH=/opt/cuda/include
 
-APPFILES = apps/example/example.cu
-COREFILES = core/light_kernel.cu core/light_host.cu
-COREHEAD = core/light_host.h
+APPDIR = apps/example
+
+APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
+COREFILES = core/light_host.cu
+COREHEAD = core/light_kernel.cu core/light_host.h
 
 light_kernel: $(COREFILES) $(COREHEAD) $(APPFILES)
-	$(NVCC) -o light_kernel $(COREFILES) $(APPFILES) -L $(NVCC_OPTS)
+	$(NVCC) -Ihead -I$(APPDIR) -o light_kernel $(COREFILES) -L $(NVCC_OPTS)
 
 .PHONY: clean
 clean:

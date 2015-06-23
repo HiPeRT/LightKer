@@ -1,6 +1,8 @@
 #ifndef head
 #define head
 
+#include "data.h"
+
 #define L_MAX_LENGTH 1024
 
 #define MAX_NUM_BLOCK 1024
@@ -26,10 +28,6 @@
 struct trig_t {
         int to_device;
         int from_device;
-};
-
-struct data_t {
-    char str[256];
 };
 
 // for from_device:
@@ -64,13 +62,5 @@ __device__ unsigned long long int cuda_timers[ 1024*1024 ];
 #define GETTIME_TOC
 #define clock_getdiff_nsec(start, stop) 0
 #endif
-
-extern __device__ data_t data_dereference(volatile char *data, int blkid);
-
-extern void init_data(void **data, int wg);
-extern void assign_data(void *data, int sm);
-
-extern __device__ int work_nocuda(volatile data_t data);
-extern __device__ int work_cuda(volatile data_t data);
 
 #endif /*head*/

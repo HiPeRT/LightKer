@@ -1,23 +1,14 @@
 #include "../../head/head.h"
 #include "../../head/utils.h"
 
-__device__ data_t data_dereference(volatile char *data, int blkid)
+void init_data(data_t **data, int wg)
 {
-	data_t *d = (data_t *)data;
-
-	return d[blkid];
+	checkCudaErrors(cudaHostAlloc((void **)data, wg * sizeof(data_t), cudaHostAllocDefault));
 }
 
-void init_data(void **data, int wg)
+void assign_data(data_t *data, int sm)
 {
-	checkCudaErrors(cudaHostAlloc(data, wg * sizeof(data_t), cudaHostAllocDefault));
-}
-
-void assign_data(void *data, int sm)
-{
-	data_t *d = (data_t *)data;
-
-	strncpy(d[sm].str, "prova", L_MAX_LENGTH);
+	strncpy(data[sm].str, "prova", L_MAX_LENGTH);
 	log("assigned data \"%s\" to thread %d\n", str, sm);
 }
 
