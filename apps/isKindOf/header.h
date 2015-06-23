@@ -2,20 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <cuda.h>
 #include <ctype.h>
-#include <iostream>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
 
 #define MAXLEN 1000 	//massima lunghezza di una stringa
 #define MAXLEVEL 100 	//massimo livello di iperinomia
 #define MAXDADS 100	//massimo numero di padri nel file di test
 #define NSYNCON 201200 	//numero di syncon
-#define NTHREADS 192	//numero di thread per blocco
-#define NBLOCKS 64	//numero di blocchi 
+#define NTHREADS 100	//numero di thread per blocco
+#define NBLOCKS 1	//numero di blocchi 
 
-#define test "testIsKindOfPadri.txt" 		//test
+#define test1 "testIsKindOf1.txt" 			//test padre singolo
+#define test2 "testIsKindOfPadri.txt" 		//test padri multipli
 #define link0 "../link/french.link0.dump.txt"	//link di iperinomia
 
 #define clock_getdiff_nsec(start, stop) ((stop.tv_sec - start.tv_sec)*1000000000 + (stop.tv_nsec - start.tv_nsec))
@@ -26,19 +23,6 @@
 #else
     #define dbgsrc(...)
 #endif
-
-#define checkCudaErrors(val) checkErr( (val), #val, __FILE__, __LINE__)
-
-template<typename T>
-void checkErr(T err, const char* const func, const char* const file, const int line) 
-{
-	if (err != cudaSuccess) 
-	{
-		std::cerr << "CUDA error at: " << file << ":" << line << std::endl;
-		std::cerr << cudaGetErrorString(err) << ": " << func << " " << err <<std::endl;
-		exit(1);
-	}
-}
 
 typedef struct rel rel_t;
 struct rel
@@ -55,5 +39,3 @@ struct syncon
 };
 
 int totSize;
-
-
