@@ -101,19 +101,19 @@ void assign_data(data_t *data, void *payload, int sm)
 	}
 	
 	memcpy(&data[sm], &temp, sizeof(data_t));
-	log("assigned data \"%s\" to thread %d\n", str, sm);
+	log("assigned data to thread %d\n", sm);
 }
 
 __device__ int work_nocuda(volatile data_t data)
 {
-        log("Hi! I'm block %d and I'm working on data ''%s'' [NOCUDA]\n", blockIdx.x, data.str);
+        log("Hi! I'm block %d and I'm working on data [NOCUDA]\n", blockIdx.x);
 	int deep = isKindOf((syncon_t *)&data.s, data.synconid, (int *)data.dads, data.n_dads);
         return deep;
 }
 
 __device__ int work_cuda(volatile data_t data)
 {
-        log("Hi! I'm block %d and I'm working on data ''%s'' [CUDA]\n", blockIdx.x, data.str);
+        log("Hi! I'm block %d and I'm working on data [CUDA]\n", blockIdx.x);
 	int deep = isKindOf((syncon_t *)&data.s, data.synconid, (int *)data.dads, data.n_dads);
         return deep;
 }

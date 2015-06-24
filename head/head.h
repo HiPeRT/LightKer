@@ -6,7 +6,7 @@
 #define MAX_NUM_BLOCK 1024
 #define MAX_SHMEM 16000
 
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
     #define log(...)  printf(__VA_ARGS__)
 #else

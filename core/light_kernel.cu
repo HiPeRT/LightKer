@@ -26,6 +26,7 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 	int blkid = blockIdx.x;
 
 	if (threadIdx.x == 0) {
+		log("Entering loop [uniform_polling]\n");
 		while (1) {
 			int to_device = _vcast(trig[blkid].to_device);
 

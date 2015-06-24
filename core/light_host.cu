@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMalloc(&arr, 1024 * sizeof(int)));
 	GETTIME_TOC;
 	long long int t_boot = t1_boot - clock_getdiff_nsec(spec_start, spec_stop);
-	log("boot(init): second %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+	log("boot(init): second %ld\n", clock_getdiff_nsec(spec_start, spec_stop));
 	sprintf(s, "%s %lld", s, t_boot);
 	verb("boot(init) %lld\n", t_boot);
 

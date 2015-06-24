@@ -14,9 +14,9 @@
 #define NTHREADS 100	//numero di thread per blocco
 #define NBLOCKS 1	//numero di blocchi 
 
-#define test1 "testIsKindOf1.txt" 			//test padre singolo
-#define test2 "testIsKindOfPadri.txt" 		//test padri multipli
-#define link0 "../link/french.link0.dump.txt"	//link di iperinomia
+#define test1 "apps/isKindOf/testIsKindOf1.txt" 			//test padre singolo
+#define test2 "apps/isKindOf/testIsKindOfPadri.txt" 		//test padri multipli
+#define link0 "apps/isKindOf/link/french.link0.dump.txt"	//link di iperinomia
 
 #define clock_getdiff_nsec(start, stop) ((stop.tv_sec - start.tv_sec)*1000000000 + (stop.tv_nsec - start.tv_nsec))
 

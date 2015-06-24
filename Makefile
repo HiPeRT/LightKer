@@ -11,7 +11,8 @@ NVCC_OPTS += $(param)
 
 CUDA_INCLUDEPATH=/opt/cuda/include
 
-APPDIR = apps/isKindOf
+#APPDIR = apps/isKindOf
+APPDIR = apps/example
 
 APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
 COREFILES = core/light_host.cu
