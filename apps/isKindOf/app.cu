@@ -34,37 +34,88 @@ void printResults (int *result, int j);
 	(memorizzata nella struttura dati s). 
 	Se non esiste relazione ritorna -1, se esiste ritorna la profondità
 */
-int isKindOf(syncon_t *s, int synconid, int *dads, int n_dads) ;
-
-/*	Legge il test con singolo padre	*/
-void readTest1 (syncon_t *s);
-/*	Legge il test con padri multipli	*/
-void readTest2 (syncon_t *s);
+__device__ int isKindOf(syncon_t *s, int synconid, int *dads, int n_dads) ;
 
 /************************************* MAIN ***********************************/
 
-int main() 
-{
-	totSize =0; 
-	syncon_t s[NSYNCON]; 
-	int curr_i[NSYNCON]; 
+FILE *infile = NULL;
+syncon_t *s, *d_s;
+int *curr_i, *d_curr_i;
 
-	totSize += sizeof(syncon_t)*NSYNCON;
+data_t temp;
+
+void init_data(data_t **data, int numblocks)
+{
+	totSize = 0;
+
+	checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
+
+	checkCudaErrors(cudaHostAlloc((void **)&s, NSYNCON*sizeof(syncon_t), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void **)&curr_i, NSYNCON*sizeof(int), cudaHostAllocDefault));
 
 	initialize(s);
 	init(curr_i);
-
-	contDadsAndSons (s);
+	contDadsAndSons(s);
 	readTable(s,curr_i);
-	
-	//print(s,NSYNCON);
-	printf("La dimensione totale è %d byte\n",totSize);
-	printf ("La dimensione del sincon_t è %d\n",sizeof(syncon_t));
-	printf ("La dimensione del rel_t è %d\n",sizeof(rel_t));
 
-	//readTest1(s);
-	readTest2(s);
-	return 0;
+	checkCudaErrors(cudaMalloc((void**)&d_s, NSYNCON*sizeof(syncon_t)));
+	checkCudaErrors(cudaMemcpy(d_s, s, NSYNCON*sizeof(syncon_t) , cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMalloc((void**)&d_curr_i, NSYNCON*sizeof(int)));
+	checkCudaErrors(cudaMemcpy(d_curr_i, curr_i, NSYNCON*sizeof(int) , cudaMemcpyHostToDevice));
+
+	infile=fopen(test2, "r");
+	if( infile==NULL ) 
+	{
+		perror("Errore in apertura del file");
+		exit(1);
+	}
+
+	totSize += sizeof(syncon_t) * NSYNCON;
+
+	printf("La dimensione totale è %d byte\n",totSize);
+}
+
+void assign_data(data_t *data, void *payload, int sm)
+{
+	char row[MAXLEN];
+	char *check, *p;
+
+	check = fgets(row, MAXLEN, infile);
+	if( check == NULL )
+		return;
+
+	p = row;
+	temp.n_dads = -1;
+
+	while (*p) {
+		if (isdigit(*p)) { 
+			if (temp.n_dads == -1) {
+				temp.synconid = strtol(p, &p, 10);
+				if(temp.synconid > NSYNCON-1)
+					break;
+			} else
+				temp.dads[temp.n_dads] = strtol(p, &p, 10);
+			temp.n_dads++;
+		} else 
+			p++;
+	}
+	
+	memcpy(&data[sm], &temp, sizeof(data_t));
+	log("assigned data \"%s\" to thread %d\n", str, sm);
+}
+
+__device__ int work_nocuda(volatile data_t data)
+{
+        log("Hi! I'm block %d and I'm working on data ''%s'' [NOCUDA]\n", blockIdx.x, data.str);
+	int deep = isKindOf((syncon_t *)&data.s, data.synconid, (int *)data.dads, data.n_dads);
+        return deep;
+}
+
+__device__ int work_cuda(volatile data_t data)
+{
+        log("Hi! I'm block %d and I'm working on data ''%s'' [CUDA]\n", blockIdx.x, data.str);
+	int deep = isKindOf((syncon_t *)&data.s, data.synconid, (int *)data.dads, data.n_dads);
+        return deep;
 }
 
 /***********************************FUNZIONI**********************************/
@@ -180,7 +231,7 @@ void printResults (int result, int j)
 }
 
 
-int isKindOf(syncon_t *s, int synconid, int *dads, int n_dads) 
+__device__ int isKindOf(syncon_t *s, int synconid, int *dads, int n_dads) 
 {
 	
 	int i;
@@ -256,108 +307,5 @@ int isKindOf(syncon_t *s, int synconid, int *dads, int n_dads)
 		}
 	}
 
-}
-
-void readTest1 (syncon_t *s)
-{
-    struct timespec spec_start, spec_stop;
-	int dads[1];
-	FILE *infile;
-	char row[MAXLEN];
-	char *check;
-	int son,i;
-
-	infile=fopen(test1, "r");
-	if( infile==NULL ) 
-	{
-		perror("Errore in apertura del file");
-		exit(1);
-	}
-
-	for(i=0; i<500; i++)
-	//while(1) 
-	{
-		check=fgets(row, MAXLEN, infile);
-		if( check == NULL )
-			break;
-		sscanf (row,"#%d,#%d",&son,&dads[0]);	
-		clock_gettime(CLOCK_MONOTONIC, &spec_start);
-		int deep = isKindOf (s,son,dads,1);
-		clock_gettime(CLOCK_MONOTONIC, &spec_stop);
-
-		printf("%ld;\n",clock_getdiff_nsec(spec_start, spec_stop));	
-		printResults(deep,i);
-	}
-
-	fclose(infile);
-}
-
-void readTest2 (syncon_t *s)
-{
-    struct timespec spec_start, spec_stop;
-	int dads[100];
-	FILE *infile;
-	char row[MAXLEN];
-	char *check,*p;
-	int son,i,n_dads;
-	bool testErr = false;
-
-	infile=fopen(test2, "r");
-	if( infile==NULL ) 
-	{
-		perror("Errore in apertura del file");
-		exit(1);
-	}
-	for(i=0; i<500; i++)
-	//while(1) 
-	{
-		check=fgets(row, MAXLEN, infile);
-		if( check == NULL )
-			break;
-
-		p = row;
-		n_dads = -1;
-
-		while (*p) 
-		{
-			if (isdigit(*p)) 
-			{ 
-				if (n_dads == -1)
-				{
-					son = strtol(p, &p, 10);
-					if(son> NSYNCON-1)
-					{
-						//printf("Errore nel testcase syncon!\n");
-						testErr = true;
-						break;
-					}
-						
-				}
-				else
-				{
-					dads[n_dads] = strtol(p, &p, 10);
-				}
-
-				n_dads++;
-			} 
-			else 
-			    p++;
-		}
-		if(testErr)
-		{
-			i--;
-			testErr = false;
-			continue;
-		}
-
-		clock_gettime(CLOCK_MONOTONIC, &spec_start);
-		int deep = isKindOf (s,son,dads,n_dads);
-		clock_gettime(CLOCK_MONOTONIC, &spec_stop);
-	
-		printf("%ld;\n",clock_getdiff_nsec(spec_start, spec_stop));	
-		//printResults(deep,i);
-	}
-
-	fclose(infile);	
 }
 
