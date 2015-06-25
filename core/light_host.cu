@@ -149,9 +149,9 @@ int main(int argc, char **argv)
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	/* cudaHostAlloc: shared between host and GPU */
-	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocMapped));
 	init_data(&data, wg);
-	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocMapped));
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
