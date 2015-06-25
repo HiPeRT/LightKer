@@ -46,8 +46,8 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 
 	// trigger initialization
 	for (int i = 0; i < wg; i++) {
-		_vcast(trig[i].from_device = THREAD_INIT);
-		_vcast(trig[i].to_device = THREAD_NOP);
+		_vcast(trig[i].from_device) = THREAD_INIT;
+		_vcast(trig[i].to_device) = THREAD_NOP;
 	}
 
 	kernel <<< blknum, blkdim, shmem >>> (trig, data, results);
@@ -67,14 +67,11 @@ void work(trig_t * trig, int sm, dim3 blknum)
  */
 void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
+	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
+
 	log ("WAIT s%d, f%dt%d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 
-	while (_vcast(trig[sm].from_device) == THREAD_INIT) sleep(1);
-
-	log ("WAITa s%d, f%dt%d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
-
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING &&
-               _vcast(trig[sm].to_device) == THREAD_WORK) sleep(1); //print_trigger("wait", trig);
+	while (_vcast(trig[sm].from_device) == THREAD_WORKING) sleep(1); //print_trigger("wait", trig);
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
 }
