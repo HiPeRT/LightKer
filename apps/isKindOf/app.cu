@@ -59,6 +59,7 @@ void init_data(data_t **data, int numblocks)
 	readTable(s,curr_i);
 
 	checkCudaErrors(cudaMalloc((void**)&d_s, NSYNCON*sizeof(syncon_t)));
+	/* Copy from RAM to global */
 	checkCudaErrors(cudaMemcpy(d_s, s, NSYNCON*sizeof(syncon_t) , cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMalloc((void**)&d_curr_i, NSYNCON*sizeof(int)));
 	checkCudaErrors(cudaMemcpy(d_curr_i, curr_i, NSYNCON*sizeof(int) , cudaMemcpyHostToDevice));

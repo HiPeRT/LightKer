@@ -148,6 +148,7 @@ int main(int argc, char **argv)
 
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
+	/* cudaHostAlloc: shared between host and GPU */
 	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
 	init_data(&data, wg);
 	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
@@ -188,6 +189,7 @@ int main(int argc, char **argv)
 	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	/* Profile sm_wait when it's useless (no need to wait the GPU). */
+	/* Wait uselessly to get overhead of calling sm_wait() */
 	/** WAIT (USELESS) **/
 	GETTIME_TIC;
 	sm_wait(trig, sm, blknum);
