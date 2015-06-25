@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
-	init(uniform_polling, trig, data, results, blkdim, blknum, shmem);
+	init(uniform_polling_cuda, trig, data, results, blkdim, blknum, shmem);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
