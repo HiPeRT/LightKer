@@ -24,11 +24,14 @@ __device__ void sleep()
 __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, int *results)
 {
 	int blkid = blockIdx.x;
+	int loop_id = 0;
+	int tid = threadIdx.x;
 
-	if (threadIdx.x == 0) {
+	if (tid == 0) {
 		while (1) {
 			volatile int to_device = _vcast(trig[blkid].to_device);
 
+			log("LOOP [%d] %d t%df%d\n", threadIdx.x, loop_id, to_device, _vcast(trig[blkid].from_device));
 			//dispose
 			if (to_device == THREAD_EXIT)
 				break;
@@ -36,7 +39,8 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 			if (to_device == THREAD_NOP)
 				_vcast(trig[blkid].from_device) = THREAD_NOP;
 
-			if (to_device == THREAD_WORK && trig[blkid].from_device == THREAD_NOP) {
+			log("LOOP [%d] %da t%df%d\n", threadIdx.x, loop_id, to_device, _vcast(trig[blkid].from_device));
+			if (to_device == THREAD_WORK && _vcast(trig[blkid].from_device) != THREAD_WORKING) {
 				_vcast(trig[blkid].from_device) = THREAD_WORKING;
 				log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
 				results[blkid] = work_nocuda(data[blkid]);
@@ -44,6 +48,7 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 				     blkid, blkid, results[blkid]);
 				_vcast(trig[blkid].from_device) = THREAD_FINISHED;
 			}
+			loop_id++;
 		}
         	log("I'm a thread and I'm out of the while\n");
 	}
@@ -57,7 +62,7 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *data, int *results)
 {
 	int blkid = blockIdx.x;
-	int tid = threadIdx.x;
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
         while (1) {
             volatile int to_device = _vcast(trig[blkid].to_device);

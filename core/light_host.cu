@@ -58,22 +58,31 @@ void work(trig_t * trig, int sm, dim3 blknum)
 {
 	assert(sm <= blknum.x);
 
-	trig[sm].to_device = THREAD_WORK;
+	log("WORK s%d\n", sm);
+	_vcast(trig[sm].to_device) = THREAD_WORK;
 }
 
 /* Busy wait until the given sm is working.
  * Trigger to_device is restored to state "THREAD_NOP".
  */
-void sm_wait(trig_t * trig, int sm, dim3 blknum)
+void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING && _vcast(trig[sm].to_device) == THREAD_WORK) print_trigger("wait", trig);
+	log ("WAIT s%d, f%dt%d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+
+	while (_vcast(trig[sm].from_device) == THREAD_INIT) sleep(1);
+
+	log ("WAITa s%d, f%dt%d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+
+	while (_vcast(trig[sm].from_device) == THREAD_WORKING &&
+               _vcast(trig[sm].to_device) == THREAD_WORK) sleep(1); //print_trigger("wait", trig);
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
 }
 
 int retrieve_data(trig_t * trig, int *results, int sm)
 {
-	while (_vcast(trig[sm].from_device) == THREAD_FINISHED) ;
+	log("RETRIEVE %d f%d\n", sm, _vcast(trig[sm].from_device));
+	while (_vcast(trig[sm].from_device) == THREAD_FINISHED) sleep(1);
 
 	return _vcast(results[sm]);
 }
@@ -149,16 +158,16 @@ int main(int argc, char **argv)
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	/* cudaHostAlloc: shared between host and GPU */
-	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocMapped));
+	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
 	init_data(&data, wg);
-	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocMapped));
+	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
-	init(uniform_polling_cuda, trig, data, results, blkdim, blknum, shmem);
+	init(uniform_polling, trig, data, results, blkdim, blknum, shmem);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
@@ -188,6 +197,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
+#if 0
 	/* Profile sm_wait when it's useless (no need to wait the GPU). */
 	/* Wait uselessly to get overhead of calling sm_wait() */
 	/** WAIT (USELESS) **/
@@ -196,6 +206,7 @@ int main(int argc, char **argv)
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+#endif
 
 	/** RETRIEVE DATA **/
 	GETTIME_TIC;
