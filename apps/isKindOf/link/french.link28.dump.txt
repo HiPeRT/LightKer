@@ -1,0 +1,5 @@
+// ----------------------------------------------------------
+// TABLE: rule sostantivo+con/sostantivo
+// FORMAT: CHILD_SYNCONID tab DAD_SYNCONID tab WEIGHT tab ATTRS tag EXTRAS
+// ----------------------------------------------------------
+// ----------------------------------------------------------
