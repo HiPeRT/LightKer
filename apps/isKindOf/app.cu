@@ -121,7 +121,6 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaMemcpy(data_p->synconid, syncon, numblocks*sizeof(int), cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy(data_p->n_dads, n_dads, numblocks*sizeof(int), cudaMemcpyHostToDevice));
 
-
 	//printf("La dimensione totale è %f MB\n\n",(float)totSize/1024/1024);
 	
 }
