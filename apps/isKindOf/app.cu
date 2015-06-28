@@ -331,6 +331,8 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 	int tid = threadIdx.x;
 	int bid = blockIdx.x;
 	int threadRunning = blockDim.x;
+
+	int loopthresh = 0;
 	
 	__shared__ volatile int done,curr_syn_glob,level;
 	__shared__ int s_dim[MAXLEVEL];
@@ -350,12 +352,13 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 	curr_syn =synconid[bid];
 	__syncthreads();
 
-	dbgsrc("Sono prima del while\n");
-	
+	dbgsrc("Sono prima del while %d %d %d\n", tid, bid, threadRunning);
+
 	while (1)
 	{
 		if(tid==0)
 			dbgsrc("\n\n\n\nNUOVO GIRO:\tControllo il syncon %d\n", curr_syn);
+		break;
 
 		for(int i=0; i<(n_dads[bid]/threadRunning+1); i++,tid+=threadRunning)
 			if(tid < n_dads[bid])
@@ -372,6 +375,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 
 		tid = threadIdx.x;
 		__syncthreads();
+
 
 		if(tid == 0)
 		{
@@ -433,9 +437,13 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 			break;
 		curr_syn = curr_syn_glob;
 		__syncthreads();
+
+		loopthresh++;
+		if (loopthresh > 200)
+			break;
 		
 	}
-	
+
 	dbgsrc("Il risultato è %d\n",*result);
 }
 

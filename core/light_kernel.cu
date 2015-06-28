@@ -63,6 +63,8 @@ __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *dat
 	int blkid = blockIdx.x;
 	int tid = threadIdx.x;
 
+	log("INIT UNIFORM POLLING\n");
+
         while (1) {
 		volatile int to_device = _vcast(trig[blkid].to_device);
 

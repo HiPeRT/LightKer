@@ -20,7 +20,7 @@
 
 #define clock_getdiff_nsec(start, stop) ((stop.tv_sec - start.tv_sec)*1000000000 + (stop.tv_nsec - start.tv_nsec))
 
-//#define DEBUGSEARCH
+#define DEBUGSEARCH
 #ifdef DEBUGSEARCH
     #define dbgsrc(...)  printf(__VA_ARGS__)
 #else
