@@ -31,16 +31,11 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 		while (1) {
 			volatile int to_device = _vcast(trig[blkid].to_device);
 
-			log("LOOP [%d] %d t%df%d\n", threadIdx.x, loop_id, to_device, _vcast(trig[blkid].from_device));
 			//dispose
 			if (to_device == THREAD_EXIT)
 				break;
 
-			if (to_device == THREAD_NOP)
-				_vcast(trig[blkid].from_device) = THREAD_NOP;
-
-			log("LOOP [%d] %da t%df%d\n", threadIdx.x, loop_id, to_device, _vcast(trig[blkid].from_device));
-			if (to_device == THREAD_WORK && _vcast(trig[blkid].from_device) != THREAD_WORKING) {
+			if (to_device == THREAD_WORK && _vcast(trig[blkid].from_device) != THREAD_FINISHED) {
 				_vcast(trig[blkid].from_device) = THREAD_WORKING;
 				log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
 				results[blkid] = work_nocuda(data[blkid]);
@@ -48,6 +43,10 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 				     blkid, blkid, results[blkid]);
 				_vcast(trig[blkid].from_device) = THREAD_FINISHED;
 			}
+
+			if (_vcast(trig[blkid].from_device) != THREAD_FINISHED && to_device == THREAD_NOP)
+				_vcast(trig[blkid].from_device) = THREAD_NOP;
+
 			loop_id++;
 		}
         	log("I'm a thread and I'm out of the while\n");
@@ -62,30 +61,33 @@ __global__ void uniform_polling(volatile trig_t *trig, volatile data_t *data, in
 __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *data, int *results)
 {
 	int blkid = blockIdx.x;
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int tid = threadIdx.x;
 
         while (1) {
-            volatile int to_device = _vcast(trig[blkid].to_device);
+		volatile int to_device = _vcast(trig[blkid].to_device);
 
-            //dispose
-            if (to_device == THREAD_EXIT)
-                break;
+		//dispose
+		if (to_device == THREAD_EXIT)
+			break;
 
-            if (tid == 0 && to_device == THREAD_NOP)
-                _vcast(trig[blkid].from_device) = THREAD_NOP;
+		if (tid == 0 && to_device == THREAD_NOP)
+			_vcast(trig[blkid].from_device) = THREAD_NOP;
 
-            if (to_device == THREAD_WORK && trig[blkid].from_device == THREAD_NOP) {
-                if (tid == 0)
-                    _vcast(trig[blkid].from_device) = THREAD_WORKING;
-                log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
-                results[blkid] = work_cuda(data[blkid]);
-                log("work finished! Set data[%d].from_device to THREAD_FINISHED, results[%d] is %d\n",
-                     blkid, blkid, results[blkid]);
-                if (tid == 0)
-                    _vcast(trig[blkid].from_device) = THREAD_FINISHED;
-            }
-        }
-        log("I'm a thread and I'm out of the while\n");
+		if (to_device == THREAD_WORK && _vcast(trig[blkid].from_device) != THREAD_FINISHED) {
+			if (tid == 0)
+				_vcast(trig[blkid].from_device) = THREAD_WORKING;
+			log("Hi, I'm block %d and I received sth to do!\n clock(): %d\n", blkid, clock());
+			results[blkid] = work_cuda(data[blkid]);
+			log("work finished! Set data[%d].from_device to THREAD_FINISHED, results[%d] is %d\n",
+			    blkid, blkid, results[blkid]);
+			if (tid == 0)
+				_vcast(trig[blkid].from_device) = THREAD_FINISHED;
+		}
+
+		if (tid == 0 && _vcast(trig[blkid].from_device) != THREAD_FINISHED && to_device == THREAD_NOP)
+			 _vcast(trig[blkid].from_device) = THREAD_NOP;
+	}
+	log("I'm a thread and I'm out of the while\n");
 }
 
 __global__ void simple_kernel(volatile data_t *data, int *results) {
