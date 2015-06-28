@@ -105,29 +105,32 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaMalloc ((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t)));
 	checkCudaErrors(cudaMemcpy(data_p->syncon, temp_s, sizeof(syncon_t)*NSYNCON, cudaMemcpyHostToDevice));
 
-	// XXX
-	if(readNewTest(infile, n_dads, syncon, dads))
-		return;		
-	checkCudaErrors(cudaMemcpy(data_p->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data_p->synconid, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data_p->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
-
 	APP_num_blocks = numblocks;
 
-	//printf("La dimensione totale è %f MB\n\n",(float)totSize/1024/1024);
-	
+	// XXX
 	infile=fopen(test, "r");
 
 	if( infile==NULL ) {
 		perror("Errore in apertura del file");
 		exit(2);
 	}
+
+	if(readNewTest(infile, n_dads, syncon, dads))
+		return;		
+	checkCudaErrors(cudaMemcpy(data_p->dads, dads, numblocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data_p->synconid, syncon, numblocks*sizeof(int), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data_p->n_dads, n_dads, numblocks*sizeof(int), cudaMemcpyHostToDevice));
+
+
+	//printf("La dimensione totale è %f MB\n\n",(float)totSize/1024/1024);
+	
 }
 
 void assign_data(data_t *data, void *payload, int sm)
 {
-
 #if 0
+	if(readNewTest(infile, n_dads, syncon, dads))
+		return;		
 	checkCudaErrors(cudaMemcpy(data->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy(data->synconid, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy(data->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
@@ -272,6 +275,7 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 				if (n_dads[i] == -1)
 				{
 					syncon[i] = strtol(p, &p, 10);
+					log("syncon[%d] = %d\n", i, syncon[i]);
 					if(syncon[i]> NSYNCON-1)
 					{
 						//printf("Errore nel testcase syncon!\n");
@@ -283,9 +287,11 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 				else
 				{
 					dads[i*MAXDADS+n_dads[i]] = strtol(p, &p, 10);
+					log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
 				}
 
 				n_dads[i]++;
+				log("n_dads[%d] = %d\n", i, n_dads[i]);
 			} 
 			else 
 			    p++;
@@ -340,8 +346,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 	while (1)
 	{
 		if(tid==0)
-			dbgsrc("\n\n\n\nNUOVO GIRO:\tControllo il syncon %d\n", curr_syn);
-
+			log("\n\n\n\nNUOVO GIRO:\tControllo il syncon %d\n", curr_syn);
 
 		for(int i=0; i<(n_dads[bid]/threadRunning+1); i++,tid+=threadRunning)
 			if(tid < n_dads[bid])
@@ -422,7 +427,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 		__syncthreads();
 	}
 
-	dbgsrc("Il risultato è %d\n",*result);
+	log("Il risultato è %d\n",*result);
 }
 
 

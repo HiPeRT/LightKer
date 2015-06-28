@@ -66,25 +66,12 @@ void work(trig_t * trig, int sm, dim3 blknum)
  */
 void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
-	int guard = 0;
 	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
 
-	log("WAIT (1)\n");
-	while (_vcast(trig[sm].from_device) != THREAD_WORKING) {
+	while (_vcast(trig[sm].from_device) != THREAD_WORKING);
 		//print_trigger("wait", trig);
-		guard++;
-		//if (guard % 500 == 0) print_trigger("wait", trig);
-		//if (guard > 5000) break;
-	}
-	log("WAIT (2)\n");
-	guard = 0;
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING) {
+	while (_vcast(trig[sm].from_device) == THREAD_WORKING);
 		//print_trigger("wait", trig);
-		guard++;
-		//if (guard % 500 == 0) print_trigger("wait", trig);
-		//if (guard > 5000) break;
-	}
-	log("WAIT (3)\n");
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
 }
