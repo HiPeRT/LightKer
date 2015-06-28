@@ -153,6 +153,8 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %lld", s, t_boot);
 	verb("boot(init) %lld\n", t_boot);
 
+	log ("1\n");
+
 	verb("\n\nLight kernel:\n");
 
 	/** ALLOC (INIT) **/
@@ -165,6 +167,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
+	log ("2\n");
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
 	init(uniform_polling, trig, data, results, blkdim, blknum, shmem);

@@ -1,21 +1,21 @@
-#ifndef __HEADER_H__
-#define __HEADER_H__
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <cuda.h>
 #include <ctype.h>
+#include <iostream>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 
 #define MAXLEN 1000 	//massima lunghezza di una stringa
 #define MAXLEVEL 100 	//massimo livello di iperinomia
 #define MAXDADS 100	//massimo numero di padri nel file di test
 #define NSYNCON 201200 	//numero di syncon
-#define NTHREADS 100	//numero di thread per blocco
-#define NBLOCKS 1	//numero di blocchi 
+#define NTHREADS 192	//numero di thread per blocco
+//#define NBLOCKS 64	//numero di blocchi 
 
-#define test1 "apps/isKindOf/testIsKindOf1.txt" 			//test padre singolo
-#define test2 "apps/isKindOf/testIsKindOfPadri.txt" 		//test padri multipli
+#define test "apps/isKindOf/testIsKindOfPadri.txt" 		//test
 #define link0 "apps/isKindOf/link/french.link0.dump.txt"	//link di iperinomia
 
 #define clock_getdiff_nsec(start, stop) ((stop.tv_sec - start.tv_sec)*1000000000 + (stop.tv_nsec - start.tv_nsec))
@@ -27,20 +27,20 @@
     #define dbgsrc(...)
 #endif
 
-typedef struct rel rel_t;
-struct rel
+//#define checkCudaErrors(val) checkErr( (val), #val, __FILE__, __LINE__)
+
+#if 0
+template<typename T>
+void checkErr(T err, const char* const func, const char* const file, const int line) 
 {
-	int synconid;
-	int tab;
-};
+	if (err != cudaSuccess) 
+	{
+		std::cerr << "CUDA error at: " << file << ":" << line << std::endl;
+		std::cerr << cudaGetErrorString(err) << ": " << func << " " << err <<std::endl;
+		exit(1);
+	}
+}
 
-typedef struct syncon syncon_t;
-struct syncon
-{
-	rel_t* rel;
-	int n_rel;
-};
+#endif
 
-int totSize;
 
-#endif /* __HEADER_H__ */
