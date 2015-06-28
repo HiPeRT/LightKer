@@ -56,8 +56,8 @@ int *n_dads, *dads,*syncon,*result;
 FILE *infile;
 struct timespec spec_start, spec_stop;
 
-syncon_t *d_s, *temp_s;
-int *d_dads, *d_n_dads, *d_syncon, *d_result;
+syncon_t *temp_s;
+int *d_result;
 
 static int APP_num_blocks;
 
@@ -67,8 +67,6 @@ void init_data(data_t **data, int numblocks)
 	totSize += sizeof(syncon_t)*NSYNCON;
 	data_t *data_p;
 
-	log("init_data 1\n");
-
 	//PARTE HOST
 
 	checkCudaErrors(cudaHostAlloc((void **)&s, NSYNCON*sizeof(syncon_t), cudaHostAllocDefault));
@@ -77,15 +75,10 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaHostAlloc((void**)&syncon,numblocks*sizeof(int),cudaHostAllocDefault));
 	checkCudaErrors(cudaHostAlloc((void**)&n_dads,numblocks*sizeof(int),cudaHostAllocDefault));
 
-	log("init_data 2\n");
 	initialize(s);
-	log("init_data 3\n");
 	init(curr_i);
-	log("init_data 4\n");
 	contDadsAndSons (s);
-	log("init_data 5\n");
 	readTable(s,curr_i);
-	log("init_data 6\n");
 
 	//PARTE DEVICE
 
@@ -99,23 +92,25 @@ void init_data(data_t **data, int numblocks)
 		temp_s[i].n_rel = s[i].n_rel;
 		temp_s[i].rel = temp;
 	}
-	log("init_data 7\n");
-
-	checkCudaErrors(cudaMalloc ((void **)&d_s, NSYNCON*sizeof(syncon_t)));
-	checkCudaErrors(cudaMemcpy(d_s, temp_s, sizeof(syncon_t)*NSYNCON, cudaMemcpyHostToDevice));
-	log("init_data 8\n");
 
 	checkCudaErrors(cudaHostAlloc((void **)data, sizeof(data_t), cudaHostAllocDefault));
-	log("init_data 8x\n");
 	data_p = *data;
-	checkCudaErrors(cudaHostAlloc((void**)&data_p->dads, numblocks*MAXDADS*sizeof(int), cudaHostAllocDefault));
-	log("init_data 8a\n");
-	checkCudaErrors(cudaHostAlloc((void**)&data_p->syncon, numblocks*sizeof(int), cudaHostAllocDefault));
-	log("init_data 8b\n");
-	checkCudaErrors(cudaHostAlloc((void**)&data_p->dads, numblocks*sizeof(int), cudaHostAllocDefault));
-	log("init_data 8c\n");
-	checkCudaErrors(cudaHostAlloc((void**)&data_p->result, numblocks*sizeof(int), cudaHostAllocDefault));
-	log("init_data 9\n");
+
+	checkCudaErrors(cudaMalloc((void**)&(data_p->dads), numblocks*MAXDADS*sizeof(int)));
+	log("init_data %p\n", data_p->dads);
+	checkCudaErrors(cudaMalloc((void**)&(data_p->synconid), numblocks*sizeof(int)));
+	checkCudaErrors(cudaMalloc((void**)&(data_p->n_dads), numblocks*sizeof(int)));
+	checkCudaErrors(cudaMalloc((void**)&(data_p->result), numblocks*sizeof(int)));
+
+	checkCudaErrors(cudaMalloc ((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t)));
+	checkCudaErrors(cudaMemcpy(data_p->syncon, temp_s, sizeof(syncon_t)*NSYNCON, cudaMemcpyHostToDevice));
+
+	// XXX
+	if(readNewTest(infile, n_dads, syncon, dads))
+		return;		
+	checkCudaErrors(cudaMemcpy(data_p->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data_p->synconid, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data_p->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
 
 	APP_num_blocks = numblocks;
 
@@ -123,34 +118,25 @@ void init_data(data_t **data, int numblocks)
 	
 	infile=fopen(test, "r");
 
-	if( infile==NULL ) 
-	{
+	if( infile==NULL ) {
 		perror("Errore in apertura del file");
 		exit(2);
 	}
 }
 
 void assign_data(data_t *data, void *payload, int sm)
-{		
-	if(readNewTest(infile, n_dads, syncon, dads))
-		return;		
+{
 
-	//clock_gettime(CLOCK_MONOTONIC, &spec_start);	
-
-	log("ASSIGN\n");
 #if 0
-	cudaMemcpy(data->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice);
-	cudaMemcpy(data->syncon, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(data->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(data->result, result, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice);
+	checkCudaErrors(cudaMemcpy(data->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data->synconid, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(data->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
 #endif
 }
 
 __device__ int work_cuda(volatile data_t data)
 {
 	int result;
-
-	log("WORK\n");
 
 	isKindOf((syncon_t *)data.syncon, (int *)data.synconid, (int *)data.n_dads, (int *)data.dads, (int *)data.result);
 
@@ -332,12 +318,9 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 	int bid = blockIdx.x;
 	int threadRunning = blockDim.x;
 
-	int loopthresh = 0;
-	
 	__shared__ volatile int done,curr_syn_glob,level;
 	__shared__ int s_dim[MAXLEVEL];
 	__shared__ rel_t *s_ptr[MAXLEVEL];
-	
 	int curr_syn;
 
 	if(tid==0)
@@ -358,7 +341,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 	{
 		if(tid==0)
 			dbgsrc("\n\n\n\nNUOVO GIRO:\tControllo il syncon %d\n", curr_syn);
-		break;
+
 
 		for(int i=0; i<(n_dads[bid]/threadRunning+1); i++,tid+=threadRunning)
 			if(tid < n_dads[bid])
@@ -409,7 +392,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 					s_dim[level] = 0;
 					level--;
 					if(level >= 0)
-						dbgsrc(	"Sono alla fine del while:\t curr_ptr punta a %d\t "
+						log(	"Sono alla fine del while:\t curr_ptr punta a %d\t "
 							"curr_dim è %d\t il livello è %d\n",
 							s_ptr[level]->synconid, s_dim[level], level);
 				}
@@ -437,11 +420,6 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 			break;
 		curr_syn = curr_syn_glob;
 		__syncthreads();
-
-		loopthresh++;
-		if (loopthresh > 200)
-			break;
-		
 	}
 
 	dbgsrc("Il risultato è %d\n",*result);

@@ -63,17 +63,12 @@ __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *dat
 	int blkid = blockIdx.x;
 	int tid = threadIdx.x;
 
-	log("INIT UNIFORM POLLING\n");
-
         while (1) {
 		volatile int to_device = _vcast(trig[blkid].to_device);
 
 		//dispose
 		if (to_device == THREAD_EXIT)
 			break;
-
-		if (tid == 0 && to_device == THREAD_NOP)
-			_vcast(trig[blkid].from_device) = THREAD_NOP;
 
 		if (to_device == THREAD_WORK && _vcast(trig[blkid].from_device) != THREAD_FINISHED) {
 			if (tid == 0)
@@ -86,8 +81,11 @@ __global__ void uniform_polling_cuda(volatile trig_t *trig, volatile data_t *dat
 				_vcast(trig[blkid].from_device) = THREAD_FINISHED;
 		}
 
-		if (tid == 0 && _vcast(trig[blkid].from_device) != THREAD_FINISHED && to_device == THREAD_NOP)
+
+		if (tid == 0 && _vcast(trig[blkid].from_device) != THREAD_FINISHED && to_device == THREAD_NOP) {
+			log("Block %d tid %d setting NOP\n");
 			 _vcast(trig[blkid].from_device) = THREAD_NOP;
+		}
 	}
 	log("I'm a thread and I'm out of the while\n");
 }

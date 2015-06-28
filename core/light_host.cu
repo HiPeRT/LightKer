@@ -50,10 +50,7 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 		_vcast(trig[i].to_device) = THREAD_NOP;
 	}
 
-	log("INIT KERNEL\n");
-
 	kernel <<< blknum, blkdim, shmem >>> (trig, data, results);
-	log("INIT KERNEL (2)\n");
 }
 
 /* Order the given sm to start working. */
@@ -69,12 +66,24 @@ void work(trig_t * trig, int sm, dim3 blknum)
  */
 void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
+	int guard = 0;
 	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
 
 	log("WAIT (1)\n");
-	while (_vcast(trig[sm].from_device) != THREAD_WORKING); //print_trigger("wait", trig);
+	while (_vcast(trig[sm].from_device) != THREAD_WORKING) {
+		//print_trigger("wait", trig);
+		guard++;
+		//if (guard % 500 == 0) print_trigger("wait", trig);
+		//if (guard > 5000) break;
+	}
 	log("WAIT (2)\n");
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING); //print_trigger("wait", trig);
+	guard = 0;
+	while (_vcast(trig[sm].from_device) == THREAD_WORKING) {
+		//print_trigger("wait", trig);
+		guard++;
+		//if (guard % 500 == 0) print_trigger("wait", trig);
+		//if (guard > 5000) break;
+	}
 	log("WAIT (3)\n");
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
@@ -95,7 +104,7 @@ void dispose(trig_t * trig, dim3 blknum)
 	int wg = blknum.x;
 	log("Stop 'em!\n");
 	for (int i = 0; i < wg; i++) {
-		trig[i].to_device = THREAD_EXIT;
+		_vcast(trig[i].to_device) = THREAD_EXIT;
 	}
 
 	cudaDeviceSynchronize();
@@ -155,8 +164,6 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %lld", s, t_boot);
 	verb("boot(init) %lld\n", t_boot);
 
-	log ("1\n");
-
 	verb("\n\nLight kernel:\n");
 
 	/** ALLOC (INIT) **/
@@ -169,7 +176,6 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	log ("2\n");
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
 	init(uniform_polling_cuda, trig, data, results, blkdim, blknum, shmem);
@@ -183,16 +189,13 @@ int main(int argc, char **argv)
 	/** COPY_DATA (WORK) **/
 	GETTIME_TIC;
 	assign_data(data, (void *)"prova", sm);
-	log("ASSIGN FINISHED\n");
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 	/** TRIGGER (WORK) **/
 	GETTIME_TIC;
-	log("WORK (1)\n");
 	work(trig, sm, blknum);
-	log("WORK (2)\n");
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
