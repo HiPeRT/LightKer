@@ -133,12 +133,14 @@ void init_data(data_t **data, int numblocks)
 	}
 }
 
-void assign_data(data_t *data, void *payload, int sm)
+int assign_data(data_t *data, void *payload, int sm)
 {
 	memcpy(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int));
 	memcpy(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int));
 	memcpy(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int));
 	TEST_IDX++;
+
+	return 0;
 }
 
 __device__ int work_cuda(volatile data_t data)

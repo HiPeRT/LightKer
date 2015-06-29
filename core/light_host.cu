@@ -30,7 +30,7 @@
 /* Allocate space on host for data */
 void init_data(data_t **data, int wg);
 /* Assign the given element to the given sm. Doesn't modify any trigger. */
-void assign_data(data_t *data, void *payload, int sm);
+int assign_data(data_t *data, void *payload, int sm);
 
 char *filename = NULL;
 
@@ -172,46 +172,50 @@ int main(int argc, char **argv)
 	//print_trigger("after init", trig);
 
 	int sm = 0;
+	int more = 1;
 
-	/** COPY_DATA (WORK) **/
-	GETTIME_TIC;
-	assign_data(data, (void *)"prova", sm);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+	while (more) {
+		/** COPY_DATA (WORK) **/
+		GETTIME_TIC;
+		more = assign_data(data, (void *)"prova", sm);
+		GETTIME_TOC;
+		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+		verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	/** TRIGGER (WORK) **/
-	GETTIME_TIC;
-	work(trig, sm, blknum);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		/** TRIGGER (WORK) **/
+		GETTIME_TIC;
+		work(trig, sm, blknum);
+		GETTIME_TOC;
+		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+		verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	/* Profile sm_wait with the possibility to need to wait the GPU. */
-	/** WAIT **/
-	GETTIME_TIC;
-	sm_wait(trig, sm, blknum);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		/* Profile sm_wait with the possibility to need to wait the GPU. */
+		/** WAIT **/
+		GETTIME_TIC;
+		sm_wait(trig, sm, blknum);
+		GETTIME_TOC;
+		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+		verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
 #if 0
-	/* Profile sm_wait when it's useless (no need to wait the GPU). */
-	/* Wait uselessly to get overhead of calling sm_wait() */
-	/** WAIT (USELESS) **/
-	GETTIME_TIC;
-	sm_wait(trig, sm, blknum);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+/* NOTE: now that sm_wait() waits for stable state this is unfeasible */
+		/* Profile sm_wait when it's useless (no need to wait the GPU). */
+		/* Wait uselessly to get overhead of calling sm_wait() */
+		/** WAIT (USELESS) **/
+		GETTIME_TIC;
+		sm_wait(trig, sm, blknum);
+		GETTIME_TOC;
+		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+		verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 #endif
 
-	/** RETRIEVE DATA **/
-	GETTIME_TIC;
-	int res = retrieve_data(trig, results, sm);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		/** RETRIEVE DATA **/
+		GETTIME_TIC;
+		int res = retrieve_data(trig, results, sm);
+		GETTIME_TOC;
+		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+		verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+	}
 
 // test if light_kernel works also with subsequent calls of work
 #if 0
