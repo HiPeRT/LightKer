@@ -140,7 +140,7 @@ int assign_data(data_t *data, void *payload, int sm)
 	memcpy(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int));
 	TEST_IDX++;
 
-	return 0;
+	return (TEST_IDX == NUM_TESTS);
 }
 
 __device__ int work_cuda(volatile data_t data)
