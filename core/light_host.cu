@@ -109,6 +109,7 @@ int main(int argc, char **argv)
 	int shmem = 0;
 	FILE *file = NULL;
 	char s[10000];
+	long wait_total = 0, work_total = 0, assign_total = 0, retrieve_total = 0;
 
 	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
 
@@ -179,23 +180,20 @@ int main(int argc, char **argv)
 		GETTIME_TIC;
 		more = assign_data(data, (void *)"prova", sm);
 		GETTIME_TOC;
-		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-		verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
 
 		/** TRIGGER (WORK) **/
 		GETTIME_TIC;
 		work(trig, sm, blknum);
 		GETTIME_TOC;
-		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-		verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		work_total += clock_getdiff_nsec(spec_start, spec_stop);
 
 		/* Profile sm_wait with the possibility to need to wait the GPU. */
 		/** WAIT **/
 		GETTIME_TIC;
 		sm_wait(trig, sm, blknum);
 		GETTIME_TOC;
-		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-		verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		wait_total += clock_getdiff_nsec(spec_start, spec_stop);
 
 #if 0
 /* NOTE: now that sm_wait() waits for stable state this is unfeasible */
@@ -213,9 +211,16 @@ int main(int argc, char **argv)
 		GETTIME_TIC;
 		int res = retrieve_data(trig, results, sm);
 		GETTIME_TOC;
-		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-		verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+		retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
 	}
+	sprintf(s, "%s %ld", s, assign_total);
+	verb("copy_data(work) %lld\n", assign_total);
+	sprintf(s, "%s %ld", s, work_total);
+	verb("trigger(work) %lld\n", work_total);
+	sprintf(s, "%s %ld", s, wait_total);
+	verb("wait %lld\n", wait_total);
+	sprintf(s, "%s %ld", s, retrieve_total);
+	verb("retrieve_data %lld\n", retrieve_total);
 
 // test if light_kernel works also with subsequent calls of work
 #if 0
