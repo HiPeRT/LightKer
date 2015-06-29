@@ -62,7 +62,7 @@ int *d_result;
 static int APP_num_blocks;
 
 static int TEST_IDX = 0;
-const int NUM_TESTS = 1;
+const int NUM_TESTS = 1024;
 static int **g_n_dads, **g_dads, **g_syncon;
 
 void init_data(data_t **data, int numblocks)
@@ -140,7 +140,7 @@ int assign_data(data_t *data, void *payload, int sm)
 	memcpy(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int));
 	TEST_IDX++;
 
-	return (TEST_IDX == NUM_TESTS);
+	return (TEST_IDX < NUM_TESTS);
 }
 
 __device__ int work_cuda(volatile data_t data)
@@ -267,10 +267,9 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 	char *p,*check;
 	bool testErr = false;
 
-
 	assert(infile);
 
-	log("FILE %p\n", infile);
+	//log("FILE %p\n", infile);
 
 	for(int i=0; i<APP_num_blocks; i++) {
 		check=fgets(row, MAXLEN, infile);
@@ -282,7 +281,7 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 			if (isdigit(*p)) { 
 				if (n_dads[i] == -1) {
 					syncon[i] = strtol(p, &p, 10);
-					log("syncon[%d] = %d\n", i, syncon[i]);
+					//log("syncon[%d] = %d\n", i, syncon[i]);
 					if(syncon[i]> NSYNCON-1)
 					{
 						//printf("Errore nel testcase syncon!\n");
@@ -292,11 +291,11 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 						
 				} else {
 					dads[i*MAXDADS+n_dads[i]] = strtol(p, &p, 10);
-					log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
+					//log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
 				}
 
 				n_dads[i]++;
-				log("n_dads[%d] = %d\n", i, n_dads[i]);
+				//log("n_dads[%d] = %d\n", i, n_dads[i]);
 			} else 
 			    p++;
 		}

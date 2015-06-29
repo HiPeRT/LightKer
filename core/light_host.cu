@@ -58,6 +58,7 @@ void work(trig_t * trig, int sm, dim3 blknum)
 {
 	assert(sm <= blknum.x);
 
+	log("WORK\n");
 	_vcast(trig[sm].to_device) = THREAD_WORK;
 }
 
@@ -71,7 +72,7 @@ void sm_wait(trig_t *trig, int sm, dim3 blknum)
 	while (_vcast(trig[sm].from_device) != THREAD_WORKING);
 		//print_trigger("wait", trig);
 	while (_vcast(trig[sm].from_device) == THREAD_WORKING);
-		//print_trigger("wait", trig);
+		//print_trigger("wait2", trig);
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
 }
@@ -81,6 +82,7 @@ int retrieve_data(trig_t * trig, int *results, int sm)
 	assert(_vcast(trig[sm].from_device) == THREAD_FINISHED);
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
+	_vcast(trig[sm].from_device) = THREAD_NOP;
 
 	return _vcast(results[sm]);
 }
