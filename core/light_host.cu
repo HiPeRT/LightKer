@@ -176,6 +176,7 @@ int main(int argc, char **argv)
 
 	int sm = 0;
 	int more = 1;
+	int num_loops = 0;
 
 	while (more) {
 		/** COPY_DATA (WORK) **/
@@ -214,9 +215,13 @@ int main(int argc, char **argv)
 		int res = retrieve_data(trig, results, sm);
 		GETTIME_TOC;
 		retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
+
+		num_loops++;
 	}
 	sprintf(s, "%s %ld", s, assign_total);
 	verb("copy_data(work) %lld\n", assign_total);
+	sprintf(s, "%s %ld", s, assign_total / num_loops);
+	verb("AVG copy_data(work) %lld\n", assign_total / num_loops);
 	sprintf(s, "%s %ld", s, work_total);
 	verb("trigger(work) %lld\n", work_total);
 	sprintf(s, "%s %ld", s, wait_total);
