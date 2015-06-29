@@ -53,13 +53,17 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads,int *dads,int *
 int curr_i[NSYNCON]; 
 syncon_t *s;
 int *n_dads, *dads,*syncon,*result;
-FILE *infile;
+static FILE *infile = NULL;
 struct timespec spec_start, spec_stop;
 
 syncon_t *temp_s;
 int *d_result;
 
 static int APP_num_blocks;
+
+static int TEST_IDX = 0;
+const int NUM_TESTS = 1;
+static int **g_n_dads, **g_dads, **g_syncon;
 
 void init_data(data_t **data, int numblocks)
 {
@@ -96,44 +100,45 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaHostAlloc((void **)data, sizeof(data_t), cudaHostAllocDefault));
 	data_p = *data;
 
-	checkCudaErrors(cudaMalloc((void**)&(data_p->dads), numblocks*MAXDADS*sizeof(int)));
-	log("init_data %p\n", data_p->dads);
-	checkCudaErrors(cudaMalloc((void**)&(data_p->synconid), numblocks*sizeof(int)));
-	checkCudaErrors(cudaMalloc((void**)&(data_p->n_dads), numblocks*sizeof(int)));
-	checkCudaErrors(cudaMalloc((void**)&(data_p->result), numblocks*sizeof(int)));
+	checkCudaErrors(cudaHostAlloc((void**)&(data_p->dads), numblocks*MAXDADS*sizeof(int), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void**)&(data_p->synconid), numblocks*sizeof(int), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void**)&(data_p->n_dads), numblocks*sizeof(int), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void**)&(data_p->result), numblocks*sizeof(int), cudaHostAllocDefault));
 
 	checkCudaErrors(cudaMalloc ((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t)));
 	checkCudaErrors(cudaMemcpy(data_p->syncon, temp_s, sizeof(syncon_t)*NSYNCON, cudaMemcpyHostToDevice));
 
 	APP_num_blocks = numblocks;
 
-	// XXX
-	infile=fopen(test, "r");
+	int i;
 
+	g_n_dads = (int **)malloc(NUM_TESTS * sizeof(int *));
+	g_dads = (int **)malloc(NUM_TESTS * sizeof(int *));
+	g_syncon = (int **)malloc(NUM_TESTS * sizeof(int *));
+	for (i = 0 ; i < NUM_TESTS ; i++) {
+		g_n_dads[i] = (int *)malloc(numblocks * sizeof(int));
+		g_dads[i] = (int *)malloc(numblocks * MAXDADS * sizeof(int));
+		g_syncon[i] = (int *)malloc(numblocks * sizeof(int));
+	}
+
+	infile=fopen(test, "r");
 	if( infile==NULL ) {
 		perror("Errore in apertura del file");
 		exit(2);
+	}	
+
+	for (i = 0 ; i < NUM_TESTS ; i++) {
+		if (readNewTest(infile, g_n_dads[i], g_syncon[i], g_dads[i]))
+			return;
 	}
-
-	if(readNewTest(infile, n_dads, syncon, dads))
-		return;		
-	checkCudaErrors(cudaMemcpy(data_p->dads, dads, numblocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data_p->synconid, syncon, numblocks*sizeof(int), cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data_p->n_dads, n_dads, numblocks*sizeof(int), cudaMemcpyHostToDevice));
-
-	//printf("La dimensione totale è %f MB\n\n",(float)totSize/1024/1024);
-	
 }
 
 void assign_data(data_t *data, void *payload, int sm)
 {
-#if 0
-	if(readNewTest(infile, n_dads, syncon, dads))
-		return;		
-	checkCudaErrors(cudaMemcpy(data->dads, dads, APP_num_blocks*MAXDADS*sizeof(int),cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data->synconid, syncon, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(data->n_dads, n_dads, APP_num_blocks*sizeof(int), cudaMemcpyHostToDevice));
-#endif
+	memcpy(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int));
+	memcpy(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int));
+	memcpy(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int));
+	TEST_IDX++;
 }
 
 __device__ int work_cuda(volatile data_t data)
@@ -260,19 +265,20 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 	char *p,*check;
 	bool testErr = false;
 
-	for(int i=0; i<APP_num_blocks; i++)
-	{
+
+	assert(infile);
+
+	log("FILE %p\n", infile);
+
+	for(int i=0; i<APP_num_blocks; i++) {
 		check=fgets(row, MAXLEN, infile);
 		if (check == NULL)
 			return 1;
 		p = row;
 		n_dads[i] = -1;
-		while (*p) 
-		{
-			if (isdigit(*p)) 
-			{ 
-				if (n_dads[i] == -1)
-				{
+		while (*p) {
+			if (isdigit(*p)) { 
+				if (n_dads[i] == -1) {
 					syncon[i] = strtol(p, &p, 10);
 					log("syncon[%d] = %d\n", i, syncon[i]);
 					if(syncon[i]> NSYNCON-1)
@@ -282,26 +288,21 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 						break;
 					}
 						
-				}
-				else
-				{
+				} else {
 					dads[i*MAXDADS+n_dads[i]] = strtol(p, &p, 10);
 					log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
 				}
 
 				n_dads[i]++;
 				log("n_dads[%d] = %d\n", i, n_dads[i]);
-			} 
-			else 
+			} else 
 			    p++;
 		}
-		if(testErr)
-		{
+		if(testErr) {
 			i--;
 			testErr = false;
 			continue;
 		}
-			
 	}
 	return 0;
 }
