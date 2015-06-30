@@ -62,7 +62,7 @@ int *d_result;
 static int APP_num_blocks;
 
 static int TEST_IDX = 0;
-const int NUM_TESTS = 1;
+const int NUM_TESTS = 1000;
 static int **g_n_dads, **g_dads, **g_syncon;
 
 void init_data(data_t **data, int numblocks)

@@ -12,7 +12,7 @@
 #define MAXLEVEL 100 	//massimo livello di iperinomia
 #define MAXDADS 100	//massimo numero di padri nel file di test
 #define NSYNCON 201200 	//numero di syncon
-#define NTHREADS 192	//numero di thread per blocco
+//#define NTHREADS 192	//numero di thread per blocco
 //#define NBLOCKS 64	//numero di blocchi 
 
 #define test "apps/isKindOf/testIsKindOfPadri.txt" 		//test

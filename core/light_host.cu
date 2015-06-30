@@ -229,6 +229,8 @@ int main(int argc, char **argv)
 	sprintf(s, "%s %ld", s, retrieve_total);
 	verb("retrieve_data %lld\n", retrieve_total);
 
+	printf("num_loops %d total %lu avg %lu\n", num_loops, assign_total + wait_total, (assign_total + wait_total) / num_loops);
+
 // test if light_kernel works also with subsequent calls of work
 #if 0
 	/** WORK **/
