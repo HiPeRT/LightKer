@@ -137,7 +137,7 @@ void init_data(data_t **data, int numblocks)
 	}
 }
 
-int assign_data(data_t *data, void *payload, int sm)
+int assign_data(data_t *data, int sm)
 {
 	memcpy(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int));
 	memcpy(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int));

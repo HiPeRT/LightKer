@@ -30,7 +30,7 @@
 /* Allocate space on host for data */
 void init_data(data_t **data, int wg);
 /* Assign the given element to the given sm. Doesn't modify any trigger. */
-int assign_data(data_t *data, void *payload, int sm);
+int assign_data(data_t *data, int sm);
 
 char *filename = NULL;
 
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 	while (more) {
 		/** COPY_DATA (WORK) **/
 		GETTIME_TIC;
-		more = assign_data(data, (void *)"prova", sm);
+		more = assign_data(data, sm);
 		GETTIME_TOC;
 		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
 
@@ -230,19 +230,6 @@ int main(int argc, char **argv)
 	verb("retrieve_data %lld\n", retrieve_total);
 
 	printf("num_loops %d total %lu avg %lu\n", num_loops, assign_total + wait_total, (assign_total + wait_total) / num_loops);
-
-// test if light_kernel works also with subsequent calls of work
-#if 0
-	/** WORK **/
-	GETTIME_TIC;
-	work(trig, data, sm, "provaa", blknum);
-	/** WAIT **/
-	sm_wait(trig, sm, blknum);
-	/** WORK **/
-	work(trig, data, sm, "provaaaaa", blknum);
-	/** WAIT **/
-	sm_wait(trig, sm, blknum);
-#endif
 
 	/** DISPOSE **/
 	GETTIME_TIC;
