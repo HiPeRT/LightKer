@@ -20,8 +20,8 @@
 #include "light_host.h"
 #include "light_kernel.cu"
 
-#define MAX_BLOCKS 128
-#define MAX_BLK_DIM 32
+#define MAX_BLOCKS 512
+#define MAX_BLK_DIM 192
 
 #ifndef MINBLOCK
 #define MINBLOCK 1
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
 
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
-	assert(blkdim.x <= 32);
+	//assert(blkdim.x <= 32);
 
 	if (filename)
 		file = fopen(filename, "a");
@@ -218,13 +218,13 @@ int main(int argc, char **argv)
 
 		num_loops++;
 	}
-	sprintf(s, "%s %ld", s, assign_total);
+	sprintf(s, "%s t%ld", s, assign_total);
 	verb("copy_data(work) %lld\n", assign_total);
 	sprintf(s, "%s %ld", s, assign_total / num_loops);
 	verb("AVG copy_data(work) %lld\n", assign_total / num_loops);
 	sprintf(s, "%s %ld", s, work_total);
 	verb("trigger(work) %lld\n", work_total);
-	sprintf(s, "%s %ld", s, wait_total);
+	sprintf(s, "%s w%ld", s, wait_total);
 	verb("wait %lld\n", wait_total);
 	sprintf(s, "%s %ld", s, retrieve_total);
 	verb("retrieve_data %lld\n", retrieve_total);
