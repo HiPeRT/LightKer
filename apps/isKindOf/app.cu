@@ -50,7 +50,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads,int *dads,int *
 
 
 /************************************* MAIN ***********************************/
-int curr_i[NSYNCON]; 
+static int curr_i[NSYNCON]; 
 syncon_t *s;
 int *n_dads, *dads,*syncon,*result;
 static FILE *infile = NULL;
@@ -62,7 +62,7 @@ int *d_result;
 static int APP_num_blocks;
 
 static int TEST_IDX = 0;
-const int NUM_TESTS = 1024;
+const int NUM_TESTS = 1;
 static int **g_n_dads, **g_dads, **g_syncon;
 
 void init_data(data_t **data, int numblocks)
@@ -107,6 +107,10 @@ void init_data(data_t **data, int numblocks)
 
 	checkCudaErrors(cudaMalloc ((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t)));
 	checkCudaErrors(cudaMemcpy(data_p->syncon, temp_s, sizeof(syncon_t)*NSYNCON, cudaMemcpyHostToDevice));
+#if 0
+	checkCudaErrors(cudaHostAlloc((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t), cudaHostAllocDefault));
+	memcpy(data_p->syncon, temp_s, sizeof(syncon_t)*NSYNCON);
+#endif
 
 	APP_num_blocks = numblocks;
 
@@ -281,7 +285,7 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 			if (isdigit(*p)) { 
 				if (n_dads[i] == -1) {
 					syncon[i] = strtol(p, &p, 10);
-					//log("syncon[%d] = %d\n", i, syncon[i]);
+					log("syncon[%d] = %d\n", i, syncon[i]);
 					if(syncon[i]> NSYNCON-1)
 					{
 						//printf("Errore nel testcase syncon!\n");
@@ -291,11 +295,11 @@ int readNewTest(FILE *infile,int *n_dads,int *syncon,int *dads)
 						
 				} else {
 					dads[i*MAXDADS+n_dads[i]] = strtol(p, &p, 10);
-					//log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
+					log("dads[%d] = %d\n", i*MAXDADS+n_dads[i], dads[i*MAXDADS+n_dads[i]]);
 				}
 
 				n_dads[i]++;
-				//log("n_dads[%d] = %d\n", i, n_dads[i]);
+				log("n_dads[%d] = %d\n", i, n_dads[i]);
 			} else 
 			    p++;
 		}
@@ -349,10 +353,11 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 		if(tid==0)
 			log("\n\n\n\nNUOVO GIRO:\tControllo il syncon %d\n", curr_syn);
 
-		for(int i=0; i<(n_dads[bid]/threadRunning+1); i++,tid+=threadRunning)
+		for(int i=0; i<(n_dads[bid]/threadRunning+1); i++,tid+=threadRunning) {
+			log("%d\n", n_dads[bid]/threadRunning+1);
 			if(tid < n_dads[bid])
 			{
-				dbgsrc("Controllo il padre %d\n",dads[bid*MAXDADS+tid]);
+				log("Controllo il padre dads[%d] %d, curr %d\n",bid*MAXDADS+tid, dads[bid*MAXDADS+tid], curr_syn);
 				if(curr_syn == dads[bid*MAXDADS+tid])
 				{
 					if(result[bid] == -1)
@@ -361,6 +366,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 						result[bid] = level+1;
 				}
 			}
+		}
 
 		tid = threadIdx.x;
 		__syncthreads();
@@ -369,12 +375,12 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 		if(tid == 0)
 		{
 
-			dbgsrc(	"Il syncon non ha dato match\n"
+			log(	"Il syncon non ha dato match\n"
 				"Numero di padri di %d : %d\n",curr_syn,s[curr_syn].n_rel);
 
 			if(s[curr_syn].n_rel != 0)
 			{	
-				dbgsrc("Il livello è %d\n",level);
+				log("Il livello è %d\n",level);
 	
 				s_ptr[level] = s[curr_syn].rel;
 				s_dim[level] = s[curr_syn].n_rel;
@@ -382,16 +388,16 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 				curr_syn = s_ptr[level]->synconid;	//mi sposto sul figlio		
 				level++;
 	
-				dbgsrc(	"curr_ptr punta a %d\t curr_dim è %d\til livello è %d\n",
+				log(	"curr_ptr punta a %d\t curr_dim è %d\til livello è %d\n",
 						s_ptr[level-1]->synconid, s_dim[level-1], level);
-				dbgsrc("Il syncon corrente è %d\n", curr_syn);
+				log("Il syncon corrente è %d\n", curr_syn);
 			}
 			else 
 			{
 				s_dim[level] = 0;
 				while (s_dim[level] < 2 && level >=0)
 				{
-					dbgsrc(	"Sono entrato nel while:\t s_dim vale %d"
+					log(	"Sono entrato nel while:\t s_dim vale %d"
 							"\til livello è %d\n",s_dim[level],level);
 	
 					s_ptr[level] = NULL;
@@ -414,7 +420,7 @@ __device__ void isKindOf(syncon_t *s, int *synconid, int *n_dads, int *dads, int
 					curr_syn = s_ptr[level]->synconid; //mi sposto sul fratello
 					level++;
 	
-					dbgsrc(	"Il livello è %d\t il fratello è %d\t e la dimensione è %d\n",
+					log(	"Il livello è %d\t il fratello è %d\t e la dimensione è %d\n",
 						level, curr_syn,s_dim[level-1]);
 				}
 			}
