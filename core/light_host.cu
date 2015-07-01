@@ -115,6 +115,16 @@ int main(int argc, char **argv)
 
 	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
 
+	int deviceCount;
+	cudaGetDeviceCount(&deviceCount);
+	int device;
+	for (device = 0; device < deviceCount; ++device) {
+		cudaDeviceProp deviceProp;
+		cudaGetDeviceProperties(&deviceProp, device);
+		printf("Device %d has async engine count %d.\n", device,
+			deviceProp.asyncEngineCount);
+	}
+
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
 	//assert(blkdim.x <= 32);
 
