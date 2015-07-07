@@ -59,7 +59,10 @@ void work(trig_t * trig, int sm, dim3 blknum)
 	assert(sm <= blknum.x);
 
 	log("WORK\n");
-	_vcast(trig[sm].to_device) = THREAD_WORK;
+	while (_vcast(trig[sm].from_device) != THREAD_WORKING) {
+		log("WAITING WORK %d %d %d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+		_vcast(trig[sm].to_device) = THREAD_WORK;
+	}
 }
 
 /* Busy wait until the given sm is working.
@@ -69,10 +72,10 @@ void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
 	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
 
-	while (_vcast(trig[sm].from_device) != THREAD_WORKING);
-		//print_trigger("wait", trig);
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING);
+	while (_vcast(trig[sm].from_device) == THREAD_WORKING) {
+		log("WAITING WORKING %d %d %d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 		//print_trigger("wait2", trig);
+	}
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
 }
@@ -121,6 +124,7 @@ int main(int argc, char **argv)
 	for (device = 0; device < deviceCount; ++device) {
 		cudaDeviceProp deviceProp;
 		cudaGetDeviceProperties(&deviceProp, device);
+		printf("canMapHostMemory [1]: %d\n", deviceProp.canMapHostMemory);
 		printf("Device %d has async engine count %d.\n", device,
 			deviceProp.asyncEngineCount);
 	}
@@ -144,7 +148,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%ld", clock_getdiff_nsec(spec_start, spec_stop));
 	verb("overhead %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	trig_t *trig;
+	trig_t *trig, *dev_trig;
 	data_t *data;
 	int *results;
 
@@ -169,7 +173,9 @@ int main(int argc, char **argv)
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	/* cudaHostAlloc: shared between host and GPU */
-	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
+//	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
+	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocMapped || cudaHostAllocWriteCombined));
+	checkCudaErrors(cudaHostGetDevicePointer(&dev_trig, trig, 0));
 	init_data(&data, wg);
 	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
 	GETTIME_TOC;
@@ -178,7 +184,7 @@ int main(int argc, char **argv)
 
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
-	init(uniform_polling_cuda, trig, data, results, blkdim, blknum, shmem);
+	init(uniform_polling_cuda, dev_trig, data, results, blkdim, blknum, shmem);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
@@ -195,18 +201,22 @@ int main(int argc, char **argv)
 		GETTIME_TOC;
 		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
 
-		/** TRIGGER (WORK) **/
-		GETTIME_TIC;
-		work(trig, sm, blknum);
-		GETTIME_TOC;
-		work_total += clock_getdiff_nsec(spec_start, spec_stop);
+		for (sm = 0 ; sm < blknum.x ; sm++) {
+			/** TRIGGER (WORK) **/
+			GETTIME_TIC;
+			work(trig, sm, blknum);
+			GETTIME_TOC;
+			work_total += clock_getdiff_nsec(spec_start, spec_stop);
+		}
 
-		/* Profile sm_wait with the possibility to need to wait the GPU. */
-		/** WAIT **/
-		GETTIME_TIC;
-		sm_wait(trig, sm, blknum);
-		GETTIME_TOC;
-		wait_total += clock_getdiff_nsec(spec_start, spec_stop);
+		for (sm = 0 ; sm < blknum.x ; sm++) {
+			/* Profile sm_wait with the possibility to need to wait the GPU. */
+			/** WAIT **/
+			GETTIME_TIC;
+			sm_wait(trig, sm, blknum);
+			GETTIME_TOC;
+			wait_total += clock_getdiff_nsec(spec_start, spec_stop);
+		 }
 
 #if 0
 /* NOTE: now that sm_wait() waits for stable state this is unfeasible */
@@ -220,11 +230,13 @@ int main(int argc, char **argv)
 		verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 #endif
 
-		/** RETRIEVE DATA **/
-		GETTIME_TIC;
-		int res = retrieve_data(trig, results, sm);
-		GETTIME_TOC;
-		retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
+		for (sm = 0 ; sm < blknum.x ; sm++) {
+			/** RETRIEVE DATA **/
+			GETTIME_TIC;
+			int res = retrieve_data(trig, results, sm);
+			GETTIME_TOC;
+			retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
+		}
 
 		num_loops++;
 	}
