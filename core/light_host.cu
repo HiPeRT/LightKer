@@ -46,7 +46,6 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 
 	// trigger initialization
 	for (int i = 0; i < wg; i++) {
-		_vcast(trig[i].from_device) = THREAD_NOP;
 		_vcast(trig[i].to_device) = THREAD_NOP;
 	}
 
@@ -57,12 +56,11 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 void work(trig_t * trig, int sm, dim3 blknum)
 {
 	assert(sm <= blknum.x);
+	assert(_vcast(trig[sm].from_device) != THREAD_WORK);
 
-	log("WORK\n");
-	while (_vcast(trig[sm].from_device) != THREAD_WORKING) {
-		log("WAITING WORK %d %d %d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
-		_vcast(trig[sm].to_device) = THREAD_WORK;
-	}
+	_vcast(trig[sm].to_device) = THREAD_WORK;
+
+	log("work %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 }
 
 /* Busy wait until the given sm is working.
@@ -72,20 +70,19 @@ void sm_wait(trig_t *trig, int sm, dim3 blknum)
 {
 	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
 
-	while (_vcast(trig[sm].from_device) == THREAD_WORKING) {
-		log("WAITING WORKING %d %d %d\n", sm, _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
-		//print_trigger("wait2", trig);
-	}
-
-	_vcast(trig[sm].to_device) = THREAD_NOP;
+	while (_vcast(trig[sm].from_device) != THREAD_WORKING &&
+	       _vcast(trig[sm].from_device) != THREAD_FINISHED /* flash! */)
+		log("waiting for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
 }
 
 int retrieve_data(trig_t * trig, int *results, int sm)
 {
-	assert(_vcast(trig[sm].from_device) == THREAD_FINISHED);
+	while (_vcast(trig[sm].from_device) != THREAD_FINISHED)
+		log("waiting (retrieve) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
-	_vcast(trig[sm].from_device) = THREAD_NOP;
+
+	log("retrieve %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 
 	return _vcast(results[sm]);
 }
