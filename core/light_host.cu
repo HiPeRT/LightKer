@@ -86,6 +86,12 @@ void sm_wait(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum,
 		log("waiting for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
 	} while (_vcast(trig[sm].from_device) != THREAD_WORKING &&
 		 _vcast(trig[sm].from_device) != THREAD_FINISHED);
+	do {
+
+		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
+				cudaMemcpyDeviceToHost, *backbone_stream));
+		log("waiting (working) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
+	} while (_vcast(trig[sm].from_device) == THREAD_WORKING);
 }
 
 int retrieve_data(trig_t *trig, trig_t *d_trig, int *results, int sm,
