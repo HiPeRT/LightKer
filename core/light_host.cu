@@ -30,7 +30,7 @@
 /* Allocate space on host for data */
 void init_data(data_t **data, int wg);
 /* Assign the given element to the given sm. Doesn't modify any trigger. */
-int assign_data(data_t *data, int sm, cudaStream_t *stream_offload);
+int assign_data(data_t *data, int sm, cudaStream_t *backbone_stream);
 
 char *filename = NULL;
 
@@ -129,9 +129,9 @@ int main(int argc, char **argv)
 			deviceProp.asyncEngineCount);
 	}
 
-	cudaStream_t stream_kernel, stream_offload;
+	cudaStream_t stream_kernel, backbone_stream;
 	checkCudaErrors(cudaStreamCreate(&stream_kernel));
-	checkCudaErrors(cudaStreamCreate(&stream_offload));
+	checkCudaErrors(cudaStreamCreate(&backbone_stream));
 
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
 	//assert(blkdim.x <= 32);
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 	while (more) {
 		/** COPY_DATA (WORK) **/
 		GETTIME_TIC;
-		more = assign_data(data, sm, &stream_offload);
+		more = assign_data(data, sm, &backbone_stream);
 		GETTIME_TOC;
 		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
 

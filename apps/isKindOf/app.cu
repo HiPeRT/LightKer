@@ -137,11 +137,11 @@ void init_data(data_t **data, int numblocks)
 	}
 }
 
-int assign_data(data_t *data, int sm, cudaStream_t *stream_offload)
+int assign_data(data_t *data, int sm, cudaStream_t *backbone_stream)
 {
-	checkCudaErrors(cudaMemcpyAsync(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
-	checkCudaErrors(cudaMemcpyAsync(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
-	checkCudaErrors(cudaMemcpyAsync(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
+	checkCudaErrors(cudaMemcpyAsync(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *backbone_stream));
+	checkCudaErrors(cudaMemcpyAsync(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int), cudaMemcpyHostToDevice, *backbone_stream));
+	checkCudaErrors(cudaMemcpyAsync(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *backbone_stream));
 	TEST_IDX++;
 
 	return (TEST_IDX < NUM_TESTS);
