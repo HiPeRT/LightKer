@@ -41,9 +41,9 @@ inline void print_trigger(const char *fun, trig_t * trig)
 
 /* Initialize the triggers and start the kernel. */
 void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
-			  trig_t *trig, data_t *data, int *results,
+			  trig_t *trig, trig_t *d_trig, data_t *data, int *results,
 			  dim3 blkdim, dim3 blknum, int shmem,
-			  cudaStream_t *stream_kernel)
+			  cudaStream_t *stream_kernel, cudaStream_t *backbone_stream)
 {
 	int wg = blknum.x;
 
@@ -51,17 +51,22 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
 	for (int i = 0; i < wg; i++) {
 		_vcast(trig[i].to_device) = THREAD_NOP;
 	}
+	checkCudaErrors(cudaMemcpyAsync(d_trig, trig, sizeof(trig_t) * wg,
+			cudaMemcpyHostToDevice, *backbone_stream));
 
-	kernel <<< blknum, blkdim, shmem, *stream_kernel >>> (trig, data, results);
+	kernel <<< blknum, blkdim, shmem, *stream_kernel >>> (d_trig, data, results);
 }
 
 /* Order the given sm to start working. */
-void work(trig_t * trig, int sm, dim3 blknum)
+void work(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum,
+	  cudaStream_t *backbone_stream)
 {
 	assert(sm <= blknum.x);
 	assert(_vcast(trig[sm].from_device) != THREAD_WORK);
 
 	_vcast(trig[sm].to_device) = THREAD_WORK;
+	checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t),
+			cudaMemcpyHostToDevice, *backbone_stream));
 
 	log("work %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 }
@@ -69,35 +74,48 @@ void work(trig_t * trig, int sm, dim3 blknum)
 /* Busy wait until the given sm is working.
  * Trigger to_device is restored to state "THREAD_NOP".
  */
-void sm_wait(trig_t *trig, int sm, dim3 blknum)
+void sm_wait(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum,
+	     cudaStream_t *backbone_stream)
 {
 	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
 
-	while (_vcast(trig[sm].from_device) != THREAD_WORKING &&
-	       _vcast(trig[sm].from_device) != THREAD_FINISHED /* flash! */)
+	do {
+
+		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
+				cudaMemcpyDeviceToHost, *backbone_stream));
 		log("waiting for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
+	} while (_vcast(trig[sm].from_device) != THREAD_WORKING &&
+		 _vcast(trig[sm].from_device) != THREAD_FINISHED);
 }
 
-int retrieve_data(trig_t * trig, int *results, int sm)
+int retrieve_data(trig_t *trig, trig_t *d_trig, int *results, int sm,
+		  cudaStream_t *backbone_stream)
 {
-	while (_vcast(trig[sm].from_device) != THREAD_FINISHED)
+	do {
+		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
+				cudaMemcpyDeviceToHost, *backbone_stream));
 		log("waiting (retrieve) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
+	} while (_vcast(trig[sm].from_device) != THREAD_FINISHED);
 
 	_vcast(trig[sm].to_device) = THREAD_NOP;
-
+	checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t),
+			cudaMemcpyHostToDevice, *backbone_stream));
 	log("retrieve %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 
 	return _vcast(results[sm]);
 }
 
 /* Order to the kernel to exit and wait for its termination. */
-void dispose(trig_t * trig, dim3 blknum)
+void dispose(trig_t *trig, trig_t *d_trig, dim3 blknum,
+	     cudaStream_t *backbone_stream)
 {
 	int wg = blknum.x;
 	log("Stop 'em!\n");
 	for (int i = 0; i < wg; i++) {
 		_vcast(trig[i].to_device) = THREAD_EXIT;
 	}
+	checkCudaErrors(cudaMemcpyAsync(d_trig, trig, sizeof(trig_t) * wg,
+			cudaMemcpyHostToDevice, *backbone_stream));
 
 	cudaDeviceSynchronize();
 	checkCudaErrors(cudaGetLastError());
@@ -117,6 +135,8 @@ int main(int argc, char **argv)
 	long wait_total = 0, work_total = 0, assign_total = 0, retrieve_total = 0;
 
 	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
+
+	log("LIGHTKERNEL START\n");
 
 	int deviceCount;
 	cudaGetDeviceCount(&deviceCount);
@@ -152,7 +172,7 @@ int main(int argc, char **argv)
 	sprintf(s, "%ld", clock_getdiff_nsec(spec_start, spec_stop));
 	verb("overhead %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
 
-	trig_t *trig, *dev_trig;
+	trig_t *trig, *d_trig;
 	data_t *data;
 	int *results;
 
@@ -177,9 +197,9 @@ int main(int argc, char **argv)
 	/** ALLOC (INIT) **/
 	GETTIME_TIC;
 	/* cudaHostAlloc: shared between host and GPU */
-//	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
-	checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocMapped || cudaHostAllocWriteCombined));
-	checkCudaErrors(cudaHostGetDevicePointer(&dev_trig, trig, 0));
+	trig = (trig_t *)malloc(wg * sizeof(trig_t));
+	checkCudaErrors(cudaMalloc((void **)&d_trig, wg * sizeof(trig_t)));
+
 	init_data(&data, wg);
 	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
 	GETTIME_TOC;
@@ -188,7 +208,7 @@ int main(int argc, char **argv)
 
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
-	init(uniform_polling_cuda, dev_trig, data, results, blkdim, blknum, shmem, &stream_kernel);
+	init(uniform_polling_cuda, trig, d_trig, data, results, blkdim, blknum, shmem, &stream_kernel, &backbone_stream);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
@@ -208,7 +228,7 @@ int main(int argc, char **argv)
 		for (sm = 0 ; sm < blknum.x ; sm++) {
 			/** TRIGGER (WORK) **/
 			GETTIME_TIC;
-			work(trig, sm, blknum);
+			work(trig, d_trig, sm, blknum, &backbone_stream);
 			GETTIME_TOC;
 			work_total += clock_getdiff_nsec(spec_start, spec_stop);
 		}
@@ -217,7 +237,7 @@ int main(int argc, char **argv)
 			/* Profile sm_wait with the possibility to need to wait the GPU. */
 			/** WAIT **/
 			GETTIME_TIC;
-			sm_wait(trig, sm, blknum);
+			sm_wait(trig, d_trig, sm, blknum, &backbone_stream);
 			GETTIME_TOC;
 			wait_total += clock_getdiff_nsec(spec_start, spec_stop);
 		 }
@@ -237,7 +257,7 @@ int main(int argc, char **argv)
 		for (sm = 0 ; sm < blknum.x ; sm++) {
 			/** RETRIEVE DATA **/
 			GETTIME_TIC;
-			int res = retrieve_data(trig, results, sm);
+			int res = retrieve_data(trig, d_trig, results, sm, &backbone_stream);
 			GETTIME_TOC;
 			retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
 		}
@@ -259,7 +279,7 @@ int main(int argc, char **argv)
 
 	/** DISPOSE **/
 	GETTIME_TIC;
-	dispose(trig, blknum);
+	dispose(trig, d_trig, blknum, &backbone_stream);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
