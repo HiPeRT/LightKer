@@ -30,7 +30,7 @@
 /* Allocate space on host for data */
 void init_data(data_t **data, int wg);
 /* Assign the given element to the given sm. Doesn't modify any trigger. */
-int assign_data(data_t *data, int sm);
+int assign_data(data_t *data, int sm, cudaStream_t *stream_offload);
 
 char *filename = NULL;
 
@@ -40,7 +40,10 @@ inline void print_trigger(const char *fun, trig_t * trig)
 }
 
 /* Initialize the triggers and start the kernel. */
-void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *trig, data_t *data, int *results, dim3 blkdim, dim3 blknum, int shmem)
+void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
+			  trig_t *trig, data_t *data, int *results,
+			  dim3 blkdim, dim3 blknum, int shmem,
+			  cudaStream_t *stream_kernel)
 {
 	int wg = blknum.x;
 
@@ -49,7 +52,7 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *), trig_t *
 		_vcast(trig[i].to_device) = THREAD_NOP;
 	}
 
-	kernel <<< blknum, blkdim, shmem >>> (trig, data, results);
+	kernel <<< blknum, blkdim, shmem, *stream_kernel >>> (trig, data, results);
 }
 
 /* Order the given sm to start working. */
@@ -126,6 +129,10 @@ int main(int argc, char **argv)
 			deviceProp.asyncEngineCount);
 	}
 
+	cudaStream_t stream_kernel, stream_offload;
+	checkCudaErrors(cudaStreamCreate(&stream_kernel));
+	checkCudaErrors(cudaStreamCreate(&stream_offload));
+
 	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
 	//assert(blkdim.x <= 32);
 
@@ -181,7 +188,7 @@ int main(int argc, char **argv)
 
 	/** SPAWN (INIT) **/
 	GETTIME_TIC;
-	init(uniform_polling_cuda, dev_trig, data, results, blkdim, blknum, shmem);
+	init(uniform_polling_cuda, dev_trig, data, results, blkdim, blknum, shmem, &stream_kernel);
 	GETTIME_TOC;
 	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
 	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
@@ -194,7 +201,7 @@ int main(int argc, char **argv)
 	while (more) {
 		/** COPY_DATA (WORK) **/
 		GETTIME_TIC;
-		more = assign_data(data, sm);
+		more = assign_data(data, sm, &stream_offload);
 		GETTIME_TOC;
 		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
 

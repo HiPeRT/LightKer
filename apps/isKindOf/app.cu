@@ -100,9 +100,9 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaHostAlloc((void **)data, sizeof(data_t), cudaHostAllocDefault));
 	data_p = *data;
 
-	checkCudaErrors(cudaHostAlloc((void**)&(data_p->dads), numblocks*MAXDADS*sizeof(int), cudaHostAllocDefault));
-	checkCudaErrors(cudaHostAlloc((void**)&(data_p->synconid), numblocks*sizeof(int), cudaHostAllocDefault));
-	checkCudaErrors(cudaHostAlloc((void**)&(data_p->n_dads), numblocks*sizeof(int), cudaHostAllocDefault));
+	checkCudaErrors(cudaMalloc((void**)&(data_p->dads), numblocks*MAXDADS*sizeof(int)));
+	checkCudaErrors(cudaMalloc((void**)&(data_p->synconid), numblocks*sizeof(int)));
+	checkCudaErrors(cudaMalloc((void**)&(data_p->n_dads), numblocks*sizeof(int)));
 	checkCudaErrors(cudaHostAlloc((void**)&(data_p->result), numblocks*sizeof(int), cudaHostAllocDefault));
 
 	checkCudaErrors(cudaMalloc ((void **)&(data_p->syncon), NSYNCON*sizeof(syncon_t)));
@@ -137,11 +137,11 @@ void init_data(data_t **data, int numblocks)
 	}
 }
 
-int assign_data(data_t *data, int sm)
+int assign_data(data_t *data, int sm, cudaStream_t *stream_offload)
 {
-	memcpy(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int));
-	memcpy(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int));
-	memcpy(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int));
+	checkCudaErrors(cudaMemcpyAsync(data->n_dads, g_n_dads[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
+	checkCudaErrors(cudaMemcpyAsync(data->dads, g_dads[TEST_IDX], APP_num_blocks * MAXDADS * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
+	checkCudaErrors(cudaMemcpyAsync(data->synconid, g_syncon[TEST_IDX], APP_num_blocks * sizeof(int), cudaMemcpyHostToDevice, *stream_offload));
 	TEST_IDX++;
 
 	return (TEST_IDX < NUM_TESTS);
