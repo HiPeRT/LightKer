@@ -6,17 +6,21 @@
 #define MAX_NUM_BLOCK 1024
 #define MAX_SHMEM 16000
 
-//#define DEBUG
 #ifdef DEBUG
-    #define log(...)  printf(__VA_ARGS__)
+#define MYFUN __func__
+#   define log(...) \
+    { \
+      printf("[LK] [%s] ", __func__); \
+      printf(__VA_ARGS__);\
+    }
 #else
-    #define log(...)
+#   define log(...)     ;
 #endif
 
 #ifdef VERBOSE
-#define verb(...) printf(__VA_ARGS__)
+#   define verb(...)    printf(__VA_ARGS__)
 #else
-#define verb(...)
+#   define verb(...)    ;
 #endif
 
 // make an int volatile
@@ -28,6 +32,8 @@ struct trig_t {
         int from_device;
 };
 
+/*** Mailbox flags */
+
 // for from_device:
 #define THREAD_INIT 0
 #define THREAD_FINISHED 1
@@ -38,27 +44,35 @@ struct trig_t {
 #define THREAD_EXIT 8
 #define THREAD_WORK 16
 
-// Take times inside a CUDA kernel
-//#define USETIMERS
-#ifdef USETIMERS
-__device__ unsigned long long int cuda_timers[ 1024*1024 ];
- #define TIMER_TIC unsigned long long int tic; if ( threadIdx.x == 0 ) tic = clock64();
- #define TIMER_TOC(tid) unsigned long long int toc = clock64(); if ( threadIdx.x == 0 ) atomicAdd( &cuda_timers[tid] , ( toc > tic ) ? (toc - tic) : ( toc + (0xffffffffffffffff - tic) ) );
-#else
- #define TIMER_TIC
- #define TIMER_TOC(tid)
-#endif
+static inline const char* getFlagName(int flag)
+{
+  switch(flag)
+  {
+    /* to_device */
+    case THREAD_INIT:
+      return "THREAD_INIT";
+    case THREAD_FINISHED:
+      return "THREAD_FINISHED";
+    case THREAD_WORKING:
+      return "THREAD_WORKING";
+      
+    /* from_device */
+    case THREAD_NOP:
+      return "THREAD_NOP";
+    case THREAD_EXIT:
+      return "THREAD_EXIT";
+    case THREAD_WORK:
+      return "THREAD_WORK";
+      
+    default:
+      return "Unknown";
+  }
+}
 
-// cpu timer
-#define USEGETTIME
-#ifdef USEGETTIME
-#define GETTIME_TIC clock_gettime(CLOCK_MONOTONIC, &spec_start)
-#define GETTIME_TOC clock_gettime(CLOCK_MONOTONIC, &spec_stop)
-#define clock_getdiff_nsec(start, stop) ((stop.tv_sec - start.tv_sec)*1000000000 + (stop.tv_nsec - start.tv_nsec))
-#else
-#define GETTIME_TIC
-#define GETTIME_TOC
-#define clock_getdiff_nsec(start, stop) 0
-#endif
+/** LK exec support */
+#define LK_EXEC_OK          0
+#define LK_EXEC_APP_ERR     1
+#define LK_EXEC_INT_ERR     2
+#define LK_NOT_IMPLEMENTED  3
 
 #endif /* __HEAD_H__ */

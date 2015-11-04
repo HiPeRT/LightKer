@@ -1,46 +1,34 @@
-#include <stdio.h>
+// #include <stdio.h>
 #include <assert.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
-#include <unistd.h>
-#include <unistd.h>
-#include <time.h>
-#include <math.h>
-#include <inttypes.h>
-#include <getopt.h>
-#include <stdlib.h>
+// #include <cuda.h>
+// #include <cuda_runtime.h>
+// #include <cuda_runtime_api.h>
+// #include <unistd.h>
+// #include <unistd.h>
+// #include <time.h>
+// #include <math.h>
+// #include <inttypes.h>
+// #include <getopt.h>
+// #include <stdlib.h>
 
-#include "utils.h"
 #include "head.h"
-
-#include "data.h"
-#include "app.cu"
-
-#include "light_host.h"
-#include "light_kernel.cu"
-
-#define MAX_BLOCKS 512
-#define MAX_BLK_DIM 192
-
-#ifndef MINBLOCK
-#define MINBLOCK 1
-#endif
-
-/* Allocate space on host for data */
-void init_data(data_t **data, int wg);
-/* Assign the given element to the given sm. Doesn't modify any trigger. */
-int assign_data(data_t *data, int sm, cudaStream_t *backbone_stream);
-
-char *filename = NULL;
+#include "utils.h"
+// 
+// #include "data.h"
+// #include "app.cu"
+// 
+// #include "lk_host.h"
 
 inline void print_trigger(const char *fun, trig_t * trig)
 {
-	log("[%s] to_device %d, from_device %d\n", fun, _vcast(trig[0].to_device), _vcast(trig[0].from_device));
+	log("[%s] to_device %s (%d), from_device %s (d)\n", fun, getFlagName(_vcast(trig[0].to_device)), _vcast(trig[0].to_device),
+        getFlagName(_vcast(trig[0].from_device)), _vcast(trig[0].from_device));
 }
 
-/* Initialize the triggers and start the kernel. */
-void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
+/* Initialize the triggers and start the kernel.
+ * formerly known as 'init'
+ */
+void lkLaunch(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
 			  trig_t *trig, trig_t *d_trig, data_t *data, int *results,
 			  dim3 blkdim, dim3 blknum, int shmem,
 			  cudaStream_t *stream_kernel, cudaStream_t *backbone_stream)
@@ -57,362 +45,101 @@ void init(void (*kernel) (volatile trig_t *, volatile data_t *, int *),
 	kernel <<< blknum, blkdim, shmem, *stream_kernel >>> (d_trig, data, results);
 }
 
-/* Order the given sm to start working. */
-void work(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum,
-	  cudaStream_t *backbone_stream)
+/* Order the given sm to start working.
+ * Formerly known as 'work'
+ */
+void lkTriggerSM(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum, cudaStream_t *backbone_stream)
 {
+    log("SM %d blknum %d\n", sm, blknum.x);
 	assert(sm <= blknum.x);
 	assert(_vcast(trig[sm].from_device) != THREAD_WORK);
 
 	_vcast(trig[sm].to_device) = THREAD_WORK;
-	checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t),
-			cudaMemcpyHostToDevice, *backbone_stream));
+	checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t), cudaMemcpyHostToDevice, *backbone_stream));
 
-	log("work %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+	log("sm %d from_device %s to_device %s\n", sm,
+        getFlagName(_vcast(trig[sm].from_device)), getFlagName(_vcast(trig[sm].to_device)));
 }
 
-/* Busy wait until the given sm is working.
- * Trigger to_device is restored to state "THREAD_NOP".
+
+/* Order the given sm to start working.
  */
-void sm_wait(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum,
-	     cudaStream_t *backbone_stream)
+void lkTriggerMultiple(trig_t *trig, trig_t *d_trig, dim3 blknum, cudaStream_t *backbone_stream)
 {
-	assert(_vcast(trig[sm].to_device) == THREAD_WORK);
+    log("blknum=%d\n", blknum.x);
+
+    for(int i=0; i<blknum.x; i++)
+    {
+      log("Triggering SM #%d\n", i);
+      _vcast(trig[i].to_device) = THREAD_WORK;
+    }
+    
+    log("Transfering %d mailboxes to Device..\n", blknum.x);
+    checkCudaErrors(cudaMemcpyAsync(&d_trig[0], &trig[0], sizeof(trig_t) * blknum.x, cudaMemcpyHostToDevice, *backbone_stream));
+    
+//     log("sm %d from_device %s to_device %s\n", sm,
+//         getFlagName(_vcast(trig[sm].from_device)), getFlagName(_vcast(trig[sm].to_device)));
+}
+
+/* Busy wait until the given sm is working. Trigger to_device is restored to state "THREAD_NOP".
+ * Formerly known as 'sm_wait'
+ */
+void lkWaitSM(trig_t *trig, trig_t *d_trig, int sm, dim3 blknum, cudaStream_t *backbone_stream)
+{
+    log("SM #%d\n", sm);
+    
+    if(_vcast(trig[sm].to_device) != THREAD_WORK)
+    {
+      printf("SM #%d was not triggered! %d", sm, _vcast(trig[sm].to_device));
+      return;
+    }
+    
+    log("waiting for SM #%d to start working\n",sm);
 
 	do {
 
-		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
-				cudaMemcpyDeviceToHost, *backbone_stream));
-		log("waiting for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
-	} while (_vcast(trig[sm].from_device) != THREAD_WORKING &&
-		 _vcast(trig[sm].from_device) != THREAD_FINISHED);
+//         checkCudaErrors(cudaMemcpyAsync(trig, d_trig, sizeof(trig_t)*blknum.x,
+//               cudaMemcpyDeviceToHost, *backbone_stream));
+		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t), cudaMemcpyDeviceToHost, *backbone_stream));
+//         log("waiting for SM #%d to start working (to_device flag: %s, from_device flag: %s)\n",
+//             sm, getFlagName(_vcast(trig[sm].to_device)), getFlagName(_vcast(trig[sm].from_device)));
+        
+	} while (_vcast(trig[sm].from_device) != THREAD_WORKING && _vcast(trig[sm].from_device) != THREAD_FINISHED);
+
+    log("SM #%d is working: waiting for it to end\n", sm);
 	do {
 
-		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
-				cudaMemcpyDeviceToHost, *backbone_stream));
-		log("waiting (working) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
+		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t), cudaMemcpyDeviceToHost, *backbone_stream));
+// 		log("waiting for SM #%d to end working (to_device flag: %s, from_device flag: %s)\n",
+//             sm, getFlagName(_vcast(trig[sm].to_device)), getFlagName(_vcast(trig[sm].from_device)));
 	} while (_vcast(trig[sm].from_device) == THREAD_WORKING);
+    
+    log("SM #%d ended its work\n", sm);
 }
 
-int retrieve_data(trig_t *trig, trig_t *d_trig, int *results, int sm,
-		  cudaStream_t *backbone_stream)
+
+/* Order to the kernel to exit and wait for its termination.
+ * Formerly known as 'dispose'
+ */
+void lkDispose(trig_t *trig, trig_t *d_trig, dim3 blknum, cudaStream_t *backbone_stream)
 {
-	do {
-		checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
-				cudaMemcpyDeviceToHost, *backbone_stream));
-		log("waiting (retrieve) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
-	} while (_vcast(trig[sm].from_device) != THREAD_FINISHED);
+    int wg = blknum.x;
+    log("Stop 'em!\n");
 
-	_vcast(trig[sm].to_device) = THREAD_NOP;
-	checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t),
-			cudaMemcpyHostToDevice, *backbone_stream));
-	log("retrieve %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+    for (int i = 0; i < wg; i++)
+        _vcast(trig[i].to_device) = THREAD_EXIT;
+    
+    checkCudaErrors(cudaMemcpyAsync(d_trig, trig, sizeof(trig_t) * wg, cudaMemcpyHostToDevice, *backbone_stream));
+    
+    cudaStreamSynchronize(*backbone_stream);
 
-	return _vcast(results[sm]);
-}
+    checkCudaErrors(cudaDeviceSynchronize());
+    
+    checkCudaErrors(cudaGetLastError());
 
-/* Order to the kernel to exit and wait for its termination. */
-void dispose(trig_t *trig, trig_t *d_trig, dim3 blknum,
-	     cudaStream_t *backbone_stream)
-{
-	int wg = blknum.x;
-	log("Stop 'em!\n");
-	for (int i = 0; i < wg; i++) {
-		_vcast(trig[i].to_device) = THREAD_EXIT;
-	}
-	checkCudaErrors(cudaMemcpyAsync(d_trig, trig, sizeof(trig_t) * wg,
-			cudaMemcpyHostToDevice, *backbone_stream));
-
-	cudaDeviceSynchronize();
-	checkCudaErrors(cudaGetLastError());
-
-//      cudaFreeHost(trig);
-//      cudaFreeHost(results);
-//      cudaDeviceReset();
-}
-
-int main(int argc, char **argv)
-{
-	dim3 blknum = 2;
-	dim3 blkdim = (32);
-	int shmem = 0;
-	FILE *file = NULL;
-	char s[10000];
-	long wait_total = 0, work_total = 0, assign_total = 0, retrieve_total = 0;
-
-	verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
-
-	log("LIGHTKERNEL START\n");
-
-	int deviceCount;
-	cudaGetDeviceCount(&deviceCount);
-	int device;
-	for (device = 0; device < deviceCount; ++device) {
-		cudaDeviceProp deviceProp;
-		cudaGetDeviceProperties(&deviceProp, device);
-		printf("canMapHostMemory [1]: %d\n", deviceProp.canMapHostMemory);
-		printf("Device %d has async engine count %d.\n", device,
-			deviceProp.asyncEngineCount);
-	}
-
-	cudaStream_t stream_kernel, backbone_stream;
-	checkCudaErrors(cudaStreamCreate(&stream_kernel));
-	checkCudaErrors(cudaStreamCreate(&backbone_stream));
-
-	parse_cmdline(argc, argv, &blknum, &blkdim, &shmem);
-	//assert(blkdim.x <= 32);
-
-	if (filename)
-		file = fopen(filename, "a");
-
-	int wg = blknum.x;
-
-	struct timespec spec_start, spec_stop;
-	verb("blknum.x : %d\n", blknum.x);
-
-	/** OVERHEAD **/
-	GETTIME_TIC;
-	GETTIME_TOC;
-	GETTIME_TIC;
-	GETTIME_TOC;
-	sprintf(s, "%ld", clock_getdiff_nsec(spec_start, spec_stop));
-	verb("overhead %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-	trig_t *trig, *d_trig;
-	data_t *data;
-	int *results;
-
-	/** BOOT (INIT) **/
-	int *arr;
-	GETTIME_TIC;
-	checkCudaErrors(cudaMalloc(&arr, 1024 * sizeof(int)));
-	GETTIME_TOC;
-	long long int t1_boot = clock_getdiff_nsec(spec_start, spec_stop);
-	log("boot(init): first %lld\n", t1_boot);
-
-	GETTIME_TIC;
-	checkCudaErrors(cudaMalloc(&arr, 1024 * sizeof(int)));
-	GETTIME_TOC;
-	long long int t_boot = t1_boot - clock_getdiff_nsec(spec_start, spec_stop);
-	log("boot(init): second %ld\n", clock_getdiff_nsec(spec_start, spec_stop));
-	sprintf(s, "%s %lld", s, t_boot);
-	verb("boot(init) %lld\n", t_boot);
-
-	verb("\n\nLight kernel:\n");
-
-	/** ALLOC (INIT) **/
-	GETTIME_TIC;
-	/* cudaHostAlloc: shared between host and GPU */
-	trig = (trig_t *)malloc(wg * sizeof(trig_t));
-	checkCudaErrors(cudaMalloc((void **)&d_trig, wg * sizeof(trig_t)));
-
-	init_data(&data, wg);
-	checkCudaErrors(cudaHostAlloc((void **)&results, wg * sizeof(int), cudaHostAllocDefault));
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-	/** SPAWN (INIT) **/
-	GETTIME_TIC;
-	init(uniform_polling_cuda, trig, d_trig, data, results, blkdim, blknum, shmem, &stream_kernel, &backbone_stream);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("spawn(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-	//print_trigger("after init", trig);
-
-	int sm = 0;
-	int more = 1;
-	int num_loops = 0;
-
-	while (more) {
-		/** COPY_DATA (WORK) **/
-		GETTIME_TIC;
-		more = assign_data(data, sm, &backbone_stream);
-		GETTIME_TOC;
-		assign_total += clock_getdiff_nsec(spec_start, spec_stop);
-
-		for (sm = 0 ; sm < blknum.x ; sm++) {
-			/** TRIGGER (WORK) **/
-			GETTIME_TIC;
-			work(trig, d_trig, sm, blknum, &backbone_stream);
-			GETTIME_TOC;
-			work_total += clock_getdiff_nsec(spec_start, spec_stop);
-		}
-
-		for (sm = 0 ; sm < blknum.x ; sm++) {
-			/* Profile sm_wait with the possibility to need to wait the GPU. */
-			/** WAIT **/
-			GETTIME_TIC;
-			sm_wait(trig, d_trig, sm, blknum, &backbone_stream);
-			GETTIME_TOC;
-			wait_total += clock_getdiff_nsec(spec_start, spec_stop);
-		 }
-
-#if 0
-/* NOTE: now that sm_wait() waits for stable state this is unfeasible */
-		/* Profile sm_wait when it's useless (no need to wait the GPU). */
-		/* Wait uselessly to get overhead of calling sm_wait() */
-		/** WAIT (USELESS) **/
-		GETTIME_TIC;
-		sm_wait(trig, sm, blknum);
-		GETTIME_TOC;
-		sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-		verb("useless wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-#endif
-
-		for (sm = 0 ; sm < blknum.x ; sm++) {
-			/** RETRIEVE DATA **/
-			GETTIME_TIC;
-			int res = retrieve_data(trig, d_trig, results, sm, &backbone_stream);
-			GETTIME_TOC;
-			retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
-		}
-
-		num_loops++;
-	}
-	sprintf(s, "%s t%ld", s, assign_total);
-	verb("copy_data(work) %lld\n", assign_total);
-	sprintf(s, "%s %ld", s, assign_total / num_loops);
-	verb("AVG copy_data(work) %lld\n", assign_total / num_loops);
-	sprintf(s, "%s %ld", s, work_total);
-	verb("trigger(work) %lld\n", work_total);
-	sprintf(s, "%s w%ld", s, wait_total);
-	verb("wait %lld\n", wait_total);
-	sprintf(s, "%s %ld", s, retrieve_total);
-	verb("retrieve_data %lld\n", retrieve_total);
-
-	printf("num_loops %d total %lu avg %lu\n", num_loops, assign_total + wait_total, (assign_total + wait_total) / num_loops);
-
-	/** DISPOSE **/
-	GETTIME_TIC;
-	dispose(trig, d_trig, blknum, &backbone_stream);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-#if 0
-	/**** DEFAULT KERNEL ****/
-	data_t *d;
-	int *d_resu;
-	verb("\n\nDefault kernel:\n");
-
-	verb("boot(init): it's independent of the kernel type. Needed only on"
-            "the first execution of a kernel in the program.\n");
-
-	/** AlLOC (INIT) **/
-	GETTIME_TIC;
-	checkCudaErrors(cudaMalloc(&d, wg * sizeof(data_t)));
-	checkCudaErrors(cudaMalloc(&d_resu, wg * sizeof(int)));
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** COPY DATA **/
-	// non prendo i tempi della memorizzazione su host.
-	data_t *h_data;
-	h_data = (data_t *)malloc(wg * sizeof(data_t));
-	for (int i = 0; i < blknum.x; i++) {
-		sprintf(h_data[i].str, "Ciao mondo, %d", i);
-	}
-	int *h_res;
-	h_res = (int *)malloc(wg * sizeof(int));
-	GETTIME_TIC;
-	checkCudaErrors(cudaMemcpy(d, h_data, wg * sizeof(data_t), cudaMemcpyHostToDevice));
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("copy_data(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** TRIGGER **/
-	GETTIME_TIC;
-	simple_kernel <<< blknum, blkdim, shmem >>> (d, d_resu);
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("trigger(work) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** WAIT **/
-	GETTIME_TIC;
-	cudaDeviceSynchronize();
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** WAIT INUTILE **/
-	GETTIME_TIC;
-	cudaDeviceSynchronize();
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("second wait %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** DISPOSE **/
-	GETTIME_TIC;
-	checkCudaErrors(cudaGetLastError());
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("dispose %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-
-
-	/** RETRIEVE_DATA **/
-	GETTIME_TIC;
-	checkCudaErrors(cudaMemcpy(h_res, d_resu, wg * sizeof(int), cudaMemcpyDeviceToHost));
-	GETTIME_TOC;
-	sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
-	verb("retrieve_data %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
-#endif
-
-	if (file)
-		fprintf(file, "%d %s\n", blknum.x, s);
-
-}
-
-void parse_cmdline(int argc, char **argv, dim3 * blknum, dim3 * blkdim, int *shmem)
-{
-	static struct option long_options[] = {
-		{"numblock", required_argument, 0, 'n'},
-		{"dimblock", required_argument, 0, 'd'},
-		{"shmem", required_argument, 0, 's'},
-		{"filename", required_argument, 0, 'f'},
-	};
-
-	int ret;
-	int opt_index = 0;
-	int o;
-
-	while (1) {
-		ret = getopt_long(argc, argv, "n:d:s:f:", long_options, &opt_index);
-
-		if (ret == -1)
-			break;
-
-		o = atoi(optarg);
-
-		switch (ret) {
-		case 'n':
-			if (o <= MAX_BLOCKS) {
-                if (o >= MINBLOCK)
-    				blknum->x = o;
-                else
-                    blknum->x = MINBLOCK;
-            }
-			break;
-		case 'd':
-			if (o >= 1 && o <= MAX_BLK_DIM)
-				blkdim->x = o;
-			break;
-		case 's':
-			if (o > 0)
-				*shmem = o;
-			break;
-		case 'f':
-			filename = optarg;
-			break;
-		default:
-			printf("How come?\n");
-		}
-	}
+    checkCudaErrors(cudaFree(d_trig));
+    checkCudaErrors(cudaFreeHost(trig));
+    
+    checkCudaErrors(cudaDeviceReset());
+    log("Done.\n");
 }

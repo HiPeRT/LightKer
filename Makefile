@@ -6,22 +6,33 @@
 
 NVCC=nvcc
 
+param	= -DDEBUG
+# param	+= -DDEBUGSEARCH
+
 NVCC_OPTS = -O2 # -Xcompiler -Wall
 NVCC_OPTS += $(param)
 
 CUDA_INCLUDEPATH=/opt/cuda/include
+LK_HOME=.
 
-APPDIR = apps/isKindOf
+APPDIR = ${LK_HOME}/apps/isKindOf
 #APPDIR = apps/example
+COREDIR = ${LK_HOME}/core
+INCLUDEDIR = ${LK_HOME}/include
 
-APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
-COREFILES = core/light_host.cu
-COREHEAD = core/light_kernel.cu core/light_host.h
-HEAD = head/head.h head/timer.h head/utils.h
+# APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
+# COREFILES = ${COREDIR}/lk_host.cu ${COREDIR}/lk_device.cu
+COREFILES = ${COREDIR}/lk_main.cu
+HEAD = ${COREDIR}/head.h ${COREDIR}/timer.h ${COREDIR}/utils.h
 
 light_kernel: $(COREFILES) $(COREHEAD) $(APPFILES) $(HEAD)
-	$(NVCC) -Ihead -I$(APPDIR) -o light_kernel $(COREFILES) -L $(NVCC_OPTS)
+	$(NVCC) -I${INCLUDEDIR} -I$(APPDIR) -o light_kernel $(COREFILES) -L $(NVCC_OPTS)
 
 .PHONY: clean
 clean:
 	rm -f *.o light_kernel
+	
+all: light_kernel
+
+run:
+	./light_kernel

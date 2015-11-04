@@ -6,7 +6,25 @@ void init_data(data_t **data, int numblocks)
 	checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
 }
 
-int assign_data(data_t *data, int sm)
+int retrieve_data(data_t *data, int *lk_results, int sm,
+                  cudaStream_t *backbone_stream)
+{
+#if 0
+    do {
+        checkCudaErrors(cudaMemcpyAsync(&trig[sm], &d_trig[sm], sizeof(trig_t),
+                cudaMemcpyDeviceToHost, *backbone_stream));
+        log("waiting (retrieve) for %d [%d]\n",  _vcast(trig[sm].to_device), _vcast(trig[sm].from_device));
+    } while (_vcast(trig[sm].from_device) != THREAD_FINISHED);
+
+    _vcast(trig[sm].to_device) = THREAD_NOP;
+    checkCudaErrors(cudaMemcpyAsync(&d_trig[sm], &trig[sm], sizeof(trig_t),
+            cudaMemcpyHostToDevice, *backbone_stream));
+    log("retrieve %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
+#endif
+    return _vcast(lk_results[sm]);
+}
+
+int assign_data(data_t *data, int sm, cudaStream_t *backbone_stream)
 {
 	strncpy(data[sm].str, "prova", L_MAX_LENGTH);
 	log("assigned data \"%s\" to thread %d\n", (char *)payload, sm);
