@@ -1,11 +1,10 @@
 #ifndef __HEAD_H__
 #define __HEAD_H__
 
-#include "data.h"
-
 #define MAX_NUM_BLOCK 1024
 #define MAX_SHMEM 16000
 
+#include <stdio.h>
 #ifdef DEBUG
 #define MYFUN __func__
 #   define log(...) \
@@ -24,15 +23,14 @@
 #endif
 
 // make an int volatile
-#define _vcast(_arr) \
-    *(volatile int *)&_arr
-
-struct trig_t {
-        int to_device;
-        int from_device;
-};
+#define _vcast(_arr) * (volatile int *) &_arr
 
 /*** Mailbox flags */
+
+struct trig_t {
+  int to_device;
+  int from_device;
+};
 
 // for from_device:
 #define THREAD_INIT 0
@@ -44,7 +42,8 @@ struct trig_t {
 #define THREAD_EXIT 8
 #define THREAD_WORK 16
 
-static inline const char* getFlagName(int flag)
+static inline const char*
+getFlagName(int flag)
 {
   switch(flag)
   {
@@ -67,6 +66,13 @@ static inline const char* getFlagName(int flag)
     default:
       return "Unknown";
   }
+}
+
+static inline void
+print_trigger(const char *fun, trig_t * trig)
+{
+    log("[%s] to_device %s (%d), from_device %s (d)\n", fun, getFlagName(_vcast(trig[0].to_device)), _vcast(trig[0].to_device),
+    getFlagName(_vcast(trig[0].from_device)), _vcast(trig[0].from_device));
 }
 
 /** LK exec support */

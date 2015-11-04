@@ -3,6 +3,8 @@
 /* LK internal headers */
 #include "head.h"
 #include "utils.h"
+/* To treat APP specific data_t type */
+#include "data.h"
 
 /* App-specific data structures */
 #include "data.h"

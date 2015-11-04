@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 
   while (more)
   {
-    printf("-----TEST_IDX is %d------\n", TEST_IDX);
+//     printf("-----TEST_IDX is %d------\n", TEST_IDX);
     
 #if 1
     /** SMALL OFFLOAD (WORK) **/
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
       int res = lkRetrieveData(data, sm, &backbone_stream);
       GETTIME_TOC;
       log("lk_results[%d] is %d, res is %d\n", sm, lk_results[sm], res);
-      printf("--> SM %d returned %d\n", sm, g_results[TEST_IDX-1][sm]);
+//       printf("--> SM %d returned %d\n", sm, g_results[TEST_IDX-1][sm]);
       retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
     }
 

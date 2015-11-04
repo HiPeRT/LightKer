@@ -1,12 +1,11 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-#include <stdio.h>
-#include <assert.h>
 #include <iostream>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
+#include <assert.h>
+// #include <cuda.h>
+// #include <cuda_runtime.h>
+// #include <cuda_runtime_api.h>
 // #include <unistd.h>
 // #include <unistd.h>
 // #include <time.h>

@@ -11,19 +11,16 @@
 // #include <getopt.h>
 // #include <stdlib.h>
 
+/* LK internal headers */
 #include "head.h"
 #include "utils.h"
-// 
-// #include "data.h"
+/* To treat APP specific data_t type */
+#include "data.h"
 // #include "app.cu"
 // 
 // #include "lk_host.h"
 
-inline void print_trigger(const char *fun, trig_t * trig)
-{
-	log("[%s] to_device %s (%d), from_device %s (d)\n", fun, getFlagName(_vcast(trig[0].to_device)), _vcast(trig[0].to_device),
-        getFlagName(_vcast(trig[0].from_device)), _vcast(trig[0].from_device));
-}
+/* Low-level functionalities */
 
 /* Initialize the triggers and start the kernel.
  * formerly known as 'init'
@@ -142,4 +139,75 @@ void lkDispose(trig_t *trig, trig_t *d_trig, dim3 blknum, cudaStream_t *backbone
     
     checkCudaErrors(cudaDeviceReset());
     log("Done.\n");
+}
+
+/* User-level API to embed LK into application */
+
+void LKInit()
+{
+#if 0
+  dim3 blknum = 1;
+  dim3 blkdim = (1);
+  int shmem = 0;
+  char s[10000];
+  long wait_total = 0, work_total = 0, assign_total = 0, retrieve_total = 0;
+  
+  verb("Warning: with VERBOSE flag on, time measures will be unreliable\n");
+
+  /** BOOT (INIT) **/
+  
+  cudaDeviceReset();
+  
+  log("LIGHTKERNEL START\n");
+
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+  /* Get device properties */
+  int device;
+  for (device = 0; device < deviceCount; ++device)
+  {
+    cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, device);
+    log("[boot] Device canMapHostMemory: %s.\n", deviceProp.canMapHostMemory ? "yes" : "no");
+    log("[boot] Device %d has async engine count %d.\n", device, deviceProp.asyncEngineCount);
+  }
+
+  cudaStream_t stream_kernel, backbone_stream;
+  checkCudaErrors(cudaStreamCreate(&stream_kernel));
+  checkCudaErrors(cudaStreamCreate(&backbone_stream));
+  
+  log("[boot] Number of Blocks: %d number of threads per block: %d, shared memory dim: %d\n", blknum.x, blkdim.x, shmem);
+
+  int wg = blknum.x;
+
+  struct timespec spec_start, spec_stop;
+  
+  trig_t *trig, *d_trig;
+  data_t *data;
+  int *lk_results;
+
+  /** ALLOC (INIT) **/
+  /* cudaHostAlloc: shared between host and GPU */
+  checkCudaErrors(cudaHostAlloc((void **)&trig, wg * sizeof(trig_t), cudaHostAllocDefault));
+  checkCudaErrors(cudaMalloc((void **)&d_trig, wg * sizeof(trig_t)));
+
+  /* Call application-specific initialization of data
+   * 'Big offload' is performed here */
+  lkInitAppData(&data, wg);
+  checkCudaErrors(cudaHostAlloc((void **)&lk_results, wg * sizeof(int), cudaHostAllocDefault));
+  sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+  verb("alloc(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+
+  /** LAUNCH (INIT) **/
+  GETTIME_TIC;
+  if(cudaMode)
+    lkLaunch(lkUniformPollingCuda, trig, d_trig, data, lk_results, blkdim, blknum, shmem, &stream_kernel, &backbone_stream);
+  else
+    lkLaunch(lkUniformPollingNoCuda, trig, d_trig, data, lk_results, blkdim, blknum, shmem, &stream_kernel, &backbone_stream);
+  
+  GETTIME_TOC;
+  sprintf(s, "%s %ld", s, clock_getdiff_nsec(spec_start, spec_stop));
+  verb("launch(init) %lld\n", clock_getdiff_nsec(spec_start, spec_stop));
+  //print_trigger("after init", trig);
+#endif
 }

@@ -1,12 +1,12 @@
-#include "../../head/head.h"
-#include "../../head/utils.h"
+// #include "../../head/head.h"
+// #include "../../head/utils.h"
 
-void init_data(data_t **data, int numblocks)
+void lkInitAppData(data_t **data, int numblocks)
 {
-	checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
+  checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
 }
 
-int retrieve_data(data_t *data, int *lk_results, int sm,
+int lkRetrieveData(data_t *data, int sm,
                   cudaStream_t *backbone_stream)
 {
 #if 0
@@ -21,37 +21,44 @@ int retrieve_data(data_t *data, int *lk_results, int sm,
             cudaMemcpyHostToDevice, *backbone_stream));
     log("retrieve %d %d\n", _vcast(trig[sm].from_device), _vcast(trig[sm].to_device));
 #endif
-    return _vcast(lk_results[sm]);
+    return 0;
 }
 
-int assign_data(data_t *data, int sm, cudaStream_t *backbone_stream)
+int lkSmallOffload(data_t *data, int sm, cudaStream_t *backbone_stream)
 {
-	strncpy(data[sm].str, "prova", L_MAX_LENGTH);
-	log("assigned data \"%s\" to thread %d\n", (char *)payload, sm);
+  strncpy(data[sm].str, "prova", L_MAX_LENGTH);
+  log("assigned data \"%s\" to thread %d\n", (char *) data[sm].str, sm);
 
-	return 0;
+  return 0;
 }
 
-__device__ int work_nocuda(volatile data_t data)
+int lkSmallOffloadMultiple(data_t *data, dim3 blknum,  cudaStream_t *backbone_stream)
 {
-	log("Hi! I'm block %d and I'm working on data ''%s'' [NOCUDA]\n", blockIdx.x, data.str);
-	clock_t clock_count = 200000;
-	clock_t start_clock = clock();
-	clock_t clock_offset = 0;
-	while (clock_offset < clock_count)
-		clock_offset = clock() - start_clock;
-	return 1;
+  for(int sm =0; sm<blknum.x; sm++)
+    lkSmallOffload(data, sm, backbone_stream);
+  return 0;
 }
 
-__device__ int work_cuda(volatile data_t data)
+__device__ int lkWorkNoCuda(volatile data_t data)
 {
-	log("Hi! I'm block %d and I'm working on data ''%s'' [CUDA]\n", blockIdx.x, data.str);
-	clock_t clock_count = 200000;
-	clock_t start_clock = clock();
-	clock_t clock_offset = 0;
-	if (threadIdx.x == 0) {
-		while (clock_offset < clock_count)
-			clock_offset = clock() - start_clock;
-	}
-	return 1;
+  log("Hi! I'm block %d and I'm working on data ''%s'' [NOCUDA]\n", blockIdx.x, data.str);
+  clock_t clock_count = 200000;
+  clock_t start_clock = clock();
+  clock_t clock_offset = 0;
+  while (clock_offset < clock_count)
+          clock_offset = clock() - start_clock;
+  return LK_EXEC_OK;
+}
+
+__device__ int lkWorkCuda(volatile data_t data)
+{
+  log("Hi! I'm block %d and I'm working on data ''%s'' [CUDA]\n", blockIdx.x, data.str);
+  clock_t clock_count = 200000;
+  clock_t start_clock = clock();
+  clock_t clock_offset = 0;
+  if (threadIdx.x == 0) {
+          while (clock_offset < clock_count)
+                  clock_offset = clock() - start_clock;
+  }
+  return LK_EXEC_OK;
 }

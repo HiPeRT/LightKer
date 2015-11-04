@@ -26,21 +26,3 @@
 #else
     #define dbgsrc(...) ;
 #endif
-
-//#define checkCudaErrors(val) checkErr( (val), #val, __FILE__, __LINE__)
-
-#if 0
-template<typename T>
-void checkErr(T err, const char* const func, const char* const file, const int line) 
-{
-	if (err != cudaSuccess) 
-	{
-		std::cerr << "CUDA error at: " << file << ":" << line << std::endl;
-		std::cerr << cudaGetErrorString(err) << ": " << func << " " << err <<std::endl;
-		exit(1);
-	}
-}
-
-#endif
-
-

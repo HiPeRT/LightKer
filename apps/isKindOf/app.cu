@@ -135,8 +135,8 @@ void lkInitAppData(data_t **data, int numblocks)
   infile = fopen(test, "r");
   if(infile == NULL)
   {
-      log("Errore in apertura del file");
-      perror("Errore in apertura del file");
+      log("Errore in apertura del file '%s'\n", test);;
+      /*perror*/printf("Errore in apertura del file '%s'\n", test);
       exit(2);
   }	
 
@@ -265,6 +265,7 @@ void contDadsAndSons (syncon_t *s)
     infile=fopen(link0, "r");
     if( infile==NULL ) 
     {
+      log("Errore in apertura del file '%s'\n", link0);
       perror("Errore in apertura del file");
       exit(1);
     }

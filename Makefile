@@ -13,10 +13,11 @@ NVCC_OPTS = -O2 # -Xcompiler -Wall
 NVCC_OPTS += $(param)
 
 CUDA_INCLUDEPATH=/opt/cuda/include
-LK_HOME=.
+LK_HOME=${HOME}/workspace/LightKer
 
-APPDIR = ${LK_HOME}/apps/isKindOf
-#APPDIR = apps/example
+# APPDIR = ${LK_HOME}/apps/isKindOf
+APPDIR = ${LK_HOME}/apps/example
+
 COREDIR = ${LK_HOME}/core
 INCLUDEDIR = ${LK_HOME}/include
 
