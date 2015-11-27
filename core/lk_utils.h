@@ -1,18 +1,9 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#ifndef __LK_UTILS_H__
+#define __LK_UTILS_H__
 
 #include <iostream>
 #include <assert.h>
-// #include <cuda.h>
-// #include <cuda_runtime.h>
-// #include <cuda_runtime_api.h>
-// #include <unistd.h>
-// #include <unistd.h>
-// #include <time.h>
-// #include <math.h>
 #include <inttypes.h>
-// #include <getopt.h>
-// #include <stdlib.h>
 
 #define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
 
@@ -43,4 +34,4 @@ static __device__ __inline__ uint32_t __mylaneid(){
   asm volatile("mov.u32 %0, %%laneid;" : "=r"(laneid));
   return laneid;}
 
-#endif /* __UTILS__ */
+#endif /* __LK_UTILS_H__ */
