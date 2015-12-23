@@ -115,11 +115,5 @@ __global__ void lkUniformPollingNoCuda(volatile mailbox_elem_t * to_device,
                                        volatile data_t *data, volatile res_t * res,
                                        lk_result_t *lk_results)
 {
-  LK_WARN_NOT_SUPPORTED()
-  int blkid = blockIdx.x;
-  int tid = threadIdx.x;
-  
-  log("I am thread %d block %d, my SM ID is %d, my warp ID is %d, and my warp lane is %d\n",
-      tid, blkid, __mysmid(), __mywarpid(), __mylaneid());
-  return;
+  LK_WARN_NOT_SUPPORTED();
 }

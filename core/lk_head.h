@@ -39,10 +39,6 @@ void lkDispose(dim3);
     log("[WARNING] %s is not supported yet.\n", __func__ );
 // To define always inline functions
 #define ALWAYS_INLINE           __attribute__((always_inline))
-// make an int volatile
-#define _vcast(_arr)            * (volatile int *) &_arr
-// For printing ptrs
-#define _mycast_                (unsigned int) (uintptr_t)
 
 
 /** Global definitions */

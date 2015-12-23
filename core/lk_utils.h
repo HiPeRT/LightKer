@@ -1,6 +1,11 @@
 #ifndef __LK_UTILS_H__
 #define __LK_UTILS_H__
 
+// make an int volatile
+#define _vcast(_arr)            * (volatile int *) &_arr
+// For printing ptrs
+#define _mycast_                (unsigned int) (uintptr_t)
+
 #include <iostream>
 #include <assert.h>
 #include <inttypes.h>

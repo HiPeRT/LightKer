@@ -1,0 +1,11 @@
+EXENAME=cuda
+CUDA_INCLUDEPATH=/opt/cuda/include
+
+all:
+	nvcc -O2 cuda.cu -o ${EXENAME}  -I${LK_HOME}
+
+clean:
+	rm -f ${EXENAME} *.o *~
+	
+run:
+	./${EXENAME}

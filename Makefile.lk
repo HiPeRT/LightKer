@@ -1,7 +1,7 @@
 
 EXENAME ?= light_kernel
 
-PARAMS  += -DDEBUG
+# PARAMS  += -DDEBUG
 # PARAMS += -DDEBUGSEARCH
 
 NVCC=nvcc
