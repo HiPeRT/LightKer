@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <inttypes.h>
 
-#define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
 
 template<typename T>
 void check(T err, const char* const func, const char* const file, const int line) {
@@ -16,22 +15,36 @@ void check(T err, const char* const func, const char* const file, const int line
     exit(1);
   }
 }
+#define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
 
 /* Retrieve GPU info */
 
-static __device__ __inline__ uint32_t __mysmid(){
+static __device__ __inline__ uint32_t __mysmid()
+{
   uint32_t smid;
   asm volatile("mov.u32 %0, %%smid;" : "=r"(smid));
-  return smid;}
+  return smid;
+}
 
-static __device__ __inline__ uint32_t __mywarpid(){
+static __device__ __inline__ uint32_t __mywarpid()
+{
   uint32_t warpid;
   asm volatile("mov.u32 %0, %%warpid;" : "=r"(warpid));
-  return warpid;}
+  return warpid;
+}
 
-static __device__ __inline__ uint32_t __mylaneid(){
+static __device__ __inline__ uint32_t __mylaneid()
+{
   uint32_t laneid;
   asm volatile("mov.u32 %0, %%laneid;" : "=r"(laneid));
-  return laneid;}
+  return laneid;
+}
+  
+static __device__ int d_strlen(const char * str)
+{
+  int i = 0;
+  while(str[i++] != '\0');
+  return i-1;
+}
 
 #endif /* __LK_UTILS_H__ */

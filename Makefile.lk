@@ -1,0 +1,35 @@
+
+EXENAME ?= light_kernel
+
+PARAMS  += -DDEBUG
+# PARAMS += -DDEBUGSEARCH
+
+NVCC=nvcc
+NVCC_OPTS = -O2
+# -Xcompiler -Wall
+NVCC_OPTS += $(PARAMS)
+
+CUDA_INCLUDEPATH=/opt/cuda/include
+LK_HOME ?= ${HOME}/workspace/__remote/LightKer
+
+APPDIR ?= ${LK_HOME}/apps/example
+
+COREDIR = ${LK_HOME}/core
+INCLUDEDIR = ${LK_HOME}/include
+
+# APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
+# COREFILES = ${COREDIR}/lk_host.cu ${COREDIR}/lk_device.cu
+COREFILES = ${COREDIR}/lk_main.cu
+# HEAD = ${COREDIR}/head.h ${COREDIR}/lk_time.h ${COREDIR}/utils.h
+
+ ${EXENAME}: $(COREFILES) $(COREHEAD) $(APPFILES)
+	$(NVCC) -I${INCLUDEDIR} -I$(APPDIR) -o ${EXENAME} $(COREFILES) -L $(NVCC_OPTS)
+
+.PHONY: clean
+clean:
+	rm -f *.o  ${EXENAME}
+	
+all:  ${EXENAME}
+
+run:
+	./ ${EXENAME}

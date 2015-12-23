@@ -1,6 +1,8 @@
-void lkDeviceAlloc(void** dataHostPtr, size_t size)
+#include "lk_utils.h"
+
+void lkDeviceAlloc(void** pDev, size_t size)
 {
-  checkCudaErrors(cudaMalloc((void **) dataHostPtr, size));
+  checkCudaErrors(cudaMalloc((void **) pDev, size));
 }
 
 void lkHostAlloc(void **pHost, size_t size)
@@ -14,12 +16,12 @@ void lkMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind
   cudaStreamSynchronize(backbone_stream);
 }
 
-void lkMemcpyToDevice(void *dst, const void *src, size_t count)
+void lkMemcpyToDevice(void *dstDev, const void *srcHost, size_t count)
 {
-  lkMemcpy(dst, src, count, cudaMemcpyHostToDevice);
+  lkMemcpy(dstDev, srcHost, count, cudaMemcpyHostToDevice);
 }
 
-void lkMemcpyFromDevice(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
+void lkMemcpyFromDevice(void *dstHost, const void *srcDev, size_t count)
 {
-  lkMemcpy(dst, src, count, cudaMemcpyDeviceToHost);
+  lkMemcpy(dstHost, srcDev, count, cudaMemcpyDeviceToHost);
 }

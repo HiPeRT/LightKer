@@ -9,49 +9,51 @@
 /** A few utils */
 #include <stdio.h>
 #ifdef DEBUG
-#   define log(...) \
-    { \
-      printf("[LK] [%s] ", __func__); \
-      printf(__VA_ARGS__);\
+#   define log(_s, ...)                                                 \
+    {                                                                   \
+      printf("[LK] [%s] " _s, __func__, ##__VA_ARGS__);                 \
     }
 #else
-#   define log(...)     ;
+#   define log(...)                                                     \
+    {                                                                   \
+    }
 #endif
-
-extern void lkDispose(dim3);
-/* TODO do better, add dispose */
-#define die(...) \
-{ \
-  printf("[LK] [%s] FATAL ERROR. ", __func__); \
-  printf(__VA_ARGS__);\
-  lkDispose(blknum); \
-  exit(1);\
-}
 
 #ifdef VERBOSE
-#   define verb(...)    printf(__VA_ARGS__)
+#   define verb(...)            printf(__VA_ARGS__)
 #else
-#   define verb(...)    ;
+#   define verb(...)            ;
 #endif
 
+void lkDispose(dim3);
+#define die(_s, ...)                                                    \
+{                                                                       \
+  printf("[LK] [%s] FATAL ERROR. " _s, __func__, ##__VA_ARGS__);        \
+  lkDispose(blknum);                                                    \
+  exit(1);                                                              \
+}
+
+
 // Unsupported features
-#define LK_WARN_NOT_SUPPORTED(_what) \
-    log("[WARNING] " _what " is not supported yet.\n");
+#define LK_WARN_NOT_SUPPORTED() \
+    log("[WARNING] %s is not supported yet.\n", __func__ );
 // To define always inline functions
-#define ALWAYS_INLINE   __attribute__((always_inline))
+#define ALWAYS_INLINE           __attribute__((always_inline))
 // make an int volatile
-#define _vcast(_arr)    * (volatile int *) &_arr
+#define _vcast(_arr)            * (volatile int *) &_arr
 // For printing ptrs
-#define _mycast_        (unsigned int) (uintptr_t)
+#define _mycast_                (unsigned int) (uintptr_t)
 
 
 /** Global definitions */
-#define MAX_NUM_BLOCKS          64
+#define MAX_NUM_BLOCKS          16
 #define MIN_NUM_BLOCKS          1
 #define MAX_SHMEM               (16 * 1024)
-#define MAX_BLOCK_DIM 192
+#define MAX_BLOCK_DIM           192
 
+typedef unsigned int lk_result_t;
 /** LK exec support */
+/* This must be 0 */
 #define LK_EXEC_OK              0
 #define LK_EXEC_APP_ERR         1
 #define LK_EXEC_INT_ERR         2
@@ -60,14 +62,14 @@ extern void lkDispose(dim3);
 /** Mailbox flags */
 
 // for from_device:
-#define THREAD_INIT 0
-#define THREAD_FINISHED 1
-#define THREAD_WORKING 2
+#define THREAD_INIT             0
+#define THREAD_FINISHED         1
+#define THREAD_WORKING          2
 
 // for to_device:
-#define THREAD_NOP 4
-#define THREAD_EXIT 8
-#define THREAD_WORK 16
+#define THREAD_NOP              4
+#define THREAD_EXIT             8
+#define THREAD_WORK             16
 
 static const char*
 getFlagName(int flag)
@@ -94,5 +96,8 @@ getFlagName(int flag)
       return "Unknown";
   }
 }
+
+/** CUDA streams */
+extern cudaStream_t kernel_stream, backbone_stream;
 
 #endif /* __LK_HEAD_H__ */

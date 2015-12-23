@@ -1,68 +1,112 @@
+#include "lk_host.h"
 
-void lkInitAppData(data_t **dataPtr, int numblocks)
+data_t *host_data = 0;
+unsigned int count_iter = 0, max_iter = 10;
+
+/*
+ * lkInitAppData - Allocate application-specific data_t using lkDeviceAlloc
+ */
+void lkInitAppData(data_t **dataPtr, res_t **resPtr, int numsm)
+{  
+  lkHostAlloc((void **) &host_data, sizeof(data_t) * numsm);
+} // lkInitAppData
+
+/*
+ * lkRetrieveData - Retrieve app results
+ */
+int lkRetrieveData(res_t * resPtr, int sm)
 {
-  log("numblocks %d\n", numblocks);
-//   checkCudaErrors(cudaHostAlloc((void **)data, numblocks * sizeof(data_t), cudaHostAllocDefault));
-  lkDeviceAlloc((void **) dataPtr, numblocks * sizeof(data_t));
-  log("Allocated data 0x%x @0x%x\n", _mycast_ *dataPtr, _mycast_ dataPtr);
+  res_t r;
+//   printf("[EXAMPLE] sm %d \n", sm);
+  lkHostAlloc((void **) &r, sizeof(int));
+  
+  lkMemcpyFromDevice(&r, &resPtr[sm], sizeof(int));
+  
+  /* 
+   * Check: each thread performed
+   * int n = blockIdx.x * 100 + d_strlen((const char *) data->str);
+   */
+  printf("[EXAMPLE] Checking results from SM %u\n", sm);
+  int expected_n = sm * 100 + strlen((const char *) host_data[sm].str);
+  expected_n *= lkNumThreadsPerSM();
+  if(expected_n != r.num)
+    printf("[EXAMPLE] Error! sm %u expected %d, got %d\n", sm, expected_n, r.num);
+  
+  return r.num;
 }
 
-int lkRetrieveData(data_t *data, int sm)
-{
-  log("sm %d \n", sm);
-  return 0;
-}
-
-extern cudaStream_t backbone_stream;
+/*
+ * lkSmallOffload - Offlad all of the SMs
+ *                  RETURN 0 if you want the engine to go on and invoke lkWork(No)Cuda, !=0 otherwise
+ */
 int lkSmallOffload(data_t *data, int sm)
 {
-  log("sm %d \n", sm);
-  data_t d;
-  lkHostAlloc((void **) &d, L_MAX_LENGTH);
-  strncpy(d.str, "prova", L_MAX_LENGTH);
+//   printf("[EXAMPLE] assigning data \"%s\" to block %d\n", d.str, sm);
+  char buf[L_MAX_LENGTH];
+  sprintf(buf, "prova_%d_%d", sm, count_iter);
+  strncpy(host_data[sm].str, buf, L_MAX_LENGTH);
+  lkMemcpyToDevice(&data[sm], &host_data[sm], L_MAX_LENGTH);
   
-  log("assigning data \"%s\" to thread %d\n", d.str, sm);
-  lkMemcpyToDevice(&data[0], &d, L_MAX_LENGTH);
+//   printf("[EXAMPLE] assigned data \"%s\" to block %d\n", (char *) host_data[sm].str, sm);
   
-  log("assigned data \"%s\" to thread %d\n", (char *) d.str, sm);
-
   return 0;
 }
 
-int lkSmallOffloadMultiple(data_t *data, dim3 blknum)
+/*
+ * lkSmallOffloadMultiple - Offlad all of the SMs
+ *                          RETURN 0 if you want the engine to go on and invoke lkWork(No)Cuda, !=0 otherwise
+ */
+int lkSmallOffloadMultiple(data_t *data, int smnum)
 {
-  log("blknum.x %d \n", blknum.x);
-  for(int sm =0; sm<blknum.x; sm++)
+//   printf("[EXAMPLE] smnum %d data 0x%x count_iter %u max_iter %u\n",
+//       smnum, _mycast_ data, count_iter, max_iter);
+  
+  for(int sm =0; sm<smnum; sm++)
     lkSmallOffload(data, sm);
-  return 0;
+  
+  return ++count_iter != max_iter;
 }
 
-__device__ int lkWorkNoCuda(volatile data_t data)
+/*
+ * lkWorkCuda - Perform your work
+ *              RETURN INT: 0 if everything went fine, !=0 in case of errors
+ */
+__device__ int lkWorkCuda(volatile data_t *data, volatile res_t *res)
 {
-  log("Hi! I'm block %d [NOCUDA]\n", blockIdx.x);
-//   log("Hi! I'm block %d and I'm working on data ''%s'' [NOCUDA]\n", blockIdx.x, data.str);
-//   clock_t clock_count = 200000;
-//   clock_t start_clock = clock();
-//   clock_t clock_offset = 0;
-//   while (clock_offset < clock_count)
-//           clock_offset = clock() - start_clock;
-  return LK_EXEC_OK;
-}
-
-__device__ int lkWorkCuda(volatile data_t data)
-{
-  log("Hi! I'm block %d [CUDA]\n", blockIdx.x);
-  log("Hi! I'm block %d and I'm working on data ''%s'' [CUDA]\n", blockIdx.x, data.str);
+//   printf("[EXAMPLE] Hi! I'm core %d of SM %d and I'm working on data ''%s''\n", threadIdx.x, blockIdx.x, data->str);
+  
+  if(threadIdx.x == 0)
+    res->num = 0;
+  
+  __syncthreads();
   clock_t clock_count = 200000;
   clock_t start_clock = clock();
   clock_t clock_offset = 0;
-  if (threadIdx.x == 0) {
-    while (clock_offset < clock_count)
-    {
-      log("Working...\n");
-      clock_offset = clock() - start_clock;
-    }
+  
+  while (clock_offset < clock_count)
+  {
+    clock_offset = clock() - start_clock;
   }
-  log("Work done [CUDA]\n", blockIdx.x);
-  return LK_EXEC_OK;
+  
+  /* Data has the format prova_<NUM_BLOCK>_<NUM_TEST> */
+  
+  //printf("[EXAMPLE] strlen(data.str) is %d\n" d_strlen(data->str)));
+  int n = blockIdx.x * 100 + d_strlen((const char *) data->str);
+  //res->num = n;
+  atomicAdd((int *)&res->num, n);
+//   printf("[EXAMPLE] Work done, returning %d\n", res->num);
+  
+  return 0;
 }
+
+
+/*
+ * lkWorkNoCuda - Perform your work
+ *                RETURN INT: 0 if everything went fine, !=0 in case of errors
+ */
+__device__ int lkWorkNoCuda(volatile data_t *data, volatile res_t *res)
+{
+  printf("[EXAMPLE] Hi! I'm block %d [NOCUDA]\n", blockIdx.x);
+  return 1;
+}
+
