@@ -1,8 +1,12 @@
 EXENAME=cuda
 CUDA_INCLUDEPATH=/opt/cuda/include
 
+# PARAMS += -DL_MAX_LENGTH=20
+# PARAMS += -DWORK_TIME=200000
+PARAMS += ${PAR1} ${PAR2}
+
 all:
-	nvcc -O2 cuda.cu -o ${EXENAME}  -I${LK_HOME}
+	nvcc -O2 cuda.cu -o ${EXENAME}  -I${LK_HOME} ${PARAMS}
 
 clean:
 	rm -f ${EXENAME} *.o *~

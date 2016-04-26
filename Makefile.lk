@@ -1,35 +1,40 @@
+# Should be defined in application Makefile
+EXENAME			?= light_kernel
+APPDIR			?= ${LK_HOME}/apps/example1
+# ENV
+LK_HOME			?= ${HOME}/workspace/__remote/LightKer
+# Required by CUDA
+CUDA_INCLUDEPATH	 = /opt/cuda/include
 
-EXENAME ?= light_kernel
-
-# PARAMS  += -DDEBUG
-# PARAMS += -DDEBUGSEARCH
+# Add LK-specific params to app (user) params
+# PARAMS  += -DLK_DEBUG
+# PARAMS  += -DLK_VERBOSE
 
 NVCC=nvcc
+# NVCC_OPTS = -O0
 NVCC_OPTS = -O2
-# -Xcompiler -Wall
+# NVCC_OPTS += -Xcompiler -Wall
 NVCC_OPTS += $(PARAMS)
-
-CUDA_INCLUDEPATH=/opt/cuda/include
-LK_HOME ?= ${HOME}/workspace/__remote/LightKer
-
-APPDIR ?= ${LK_HOME}/apps/example
 
 COREDIR = ${LK_HOME}/core
 INCLUDEDIR = ${LK_HOME}/include
 
-# APPFILES = $(APPDIR)/app.cu $(APPDIR)/data.h
-# COREFILES = ${COREDIR}/lk_host.cu ${COREDIR}/lk_device.cu
-COREFILES = ${COREDIR}/lk_main.cu
-# HEAD = ${COREDIR}/head.h ${COREDIR}/lk_time.h ${COREDIR}/utils.h
+# _device_ functions should be compiled in a single unit. FIXME
+# APPSRCS = $(APPDIR)/app.cu
+# COREFILES = ${COREDIR}/lk_host.cu ${COREDIR}/lk_device.cu ${COREDIR}/lk_mailbox.cu
+# SRCS=${APPSRCS} ${COREFILES}
 
- ${EXENAME}: $(COREFILES) $(COREHEAD) $(APPFILES)
-	$(NVCC) -I${INCLUDEDIR} -I$(APPDIR) -o ${EXENAME} $(COREFILES) -L $(NVCC_OPTS)
+SRCS=${COREDIR}/lk_main.cu
+
+${EXENAME}: $(COREFILES) $(COREHEAD) $(APPSRCS)
+	$(NVCC) -I${INCLUDEDIR} -I$(APPDIR) -I${COREDIR} -o ${EXENAME} $(SRCS) -L $(NVCC_OPTS)
 
 .PHONY: clean
 clean:
-	rm -f *.o  ${EXENAME}
+	rm -f *.o *~  ${EXENAME} ${COREDIR}*~ ${INCLUDEDIR}*~ ${APPDIR}*~
 	
-all:  ${EXENAME}
+all: ${EXENAME}
 
+.PHONY: run
 run:
-	./ ${EXENAME}
+	./${EXENAME}

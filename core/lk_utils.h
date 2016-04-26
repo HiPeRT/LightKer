@@ -10,7 +10,6 @@
 #include <assert.h>
 #include <inttypes.h>
 
-
 template<typename T>
 void check(T err, const char* const func, const char* const file, const int line) {
   if (err != cudaSuccess) {

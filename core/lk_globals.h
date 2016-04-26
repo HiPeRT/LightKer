@@ -8,38 +8,39 @@
 
 /** A few utils */
 #include <stdio.h>
-#ifdef DEBUG
+#ifdef LK_DEBUG
 #   define log(_s, ...)                                                 \
     {                                                                   \
       printf("[LK] [%s] " _s, __func__, ##__VA_ARGS__);                 \
     }
-#else
+#else /* LK_DEBUG */
 #   define log(...)                                                     \
     {                                                                   \
     }
-#endif
+#endif /* LK_DEBUG */
 
-#ifdef VERBOSE
+#ifdef LK_VERBOSE
 #   define verb(...)            printf(__VA_ARGS__)
 #else
 #   define verb(...)            ;
 #endif
 
-void lkDispose(dim3);
+void lkDispose();
 #define die(_s, ...)                                                    \
 {                                                                       \
   printf("[LK] [%s] FATAL ERROR. " _s, __func__, ##__VA_ARGS__);        \
-  lkDispose(blknum);                                                    \
+  lkDispose();                                                          \
   exit(1);                                                              \
 }
 
+#define warning(_s, ...) \
+  printf("[LK] Warning. " _s, ##__VA_ARGS__);        \
 
 // Unsupported features
 #define LK_WARN_NOT_SUPPORTED() \
     log("[WARNING] %s is not supported yet.\n", __func__ );
 // To define always inline functions
 #define ALWAYS_INLINE           __attribute__((always_inline))
-
 
 /** Global definitions */
 #define MAX_NUM_BLOCKS          16
@@ -95,5 +96,8 @@ getFlagName(int flag)
 
 /** CUDA streams */
 extern cudaStream_t kernel_stream, backbone_stream;
+
+/* Puts some functions (lkWaitSM) in a "safe" mode just to profile them */
+extern unsigned int lkProfiling;
 
 #endif /* __LK_HEAD_H__ */

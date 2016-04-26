@@ -1,21 +1,21 @@
 #include <stdio.h>
 
 /* LK internal headers */
-#include "lk_head.h"
+#include "lk_globals.h"
 #include "lk_utils.h"
 
 /* App-specific data structures */
 #include "data.h"
 
-/** App-specific functions: defined by user */
-/* Formerly known as 'work_cuda' */
-__device__ int lkWorkCuda(volatile data_t *data, volatile res_t *res);
-/* Formerly known as 'work_nocuda' */
-__device__ int lkWorkNoCuda(volatile data_t data, volatile res_t *res);
-
 #define DeviceWriteMyMailboxFrom(_val)  _vcast(from_device[blockIdx.x]) = (_val)
 #define DeviceReadMyMailboxFrom()       _vcast(from_device[blockIdx.x])
 #define DeviceReadMyMailboxTo()         _vcast(to_device[blockIdx.x])
+
+/* App-specific functions: defined by user */
+/* NOTE: formerly known as 'work_cuda' */
+__device__ int lkWorkCuda(volatile data_t *data, volatile res_t *res);
+/* NOTE: formerly known as 'work_nocuda' */
+__device__ int lkWorkNoCuda(volatile data_t data, volatile res_t *res);
 
 /* Main kernel function, for writing cuda aware work function.
  * Busy waits on the GPU until the CPU notifies new work, then

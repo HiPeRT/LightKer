@@ -2,7 +2,7 @@
 
 /* LK internal headers */
 #include "lk_time.h"
-#include "lk_head.h"
+#include "lk_globals.h"
 
 // (Probably) needed in app.cu
 #include "lk_memutils.cu"
@@ -17,29 +17,52 @@
 #include "lk_host.cu"
 
 /* Parse ARGC */
-void parse_cmdline(int, char**, dim3*, dim3*, int*,  bool *);
+void lkParseCmdLine(int, char**, dim3*, dim3*, int*,  bool *);
 
-/* Global vars */
-dim3 blkdim = (1);
-dim3 blknum = (1);
-bool cudaMode = true;
-int shmem = 0;
+/* To debug */
 
+extern int nflush;
 /* Main */
 int main(int argc, char **argv)
 {  
-  long wait_total = 0, work_total = 0, assign_total = 0, retrieve_total = 0;
+  /* Global vars */
+  dim3 blkdim = (1);
+  dim3 blknum = (1);
+  bool cudaMode = true;
+  int shmem = 0;
+  
   /* Timers for profing */
-  struct timespec spec_start, spec_stop;
+  struct timespec spec_start, spec_stop, app_start, app_stop;
+  
+  /* GETTIME_INIT */
+  boot_total = alloc_total = appalloc_total = launch_total =
+    wait_total = trigger_total = assign_total = retrieve_total =
+    wait2_total = gettime_total = init_total = app_total = 0;
   
   /* Todo ing a bit... */
   data_t *data = 0;
   res_t *res = 0;
   
-  parse_cmdline(argc, argv, &blknum, &blkdim, &shmem, &cudaMode);
-
+  lkParseCmdLine(argc, argv, &blknum, &blkdim, &shmem, &cudaMode);
+  
+  printf("L_MAX_LENGTH %d WORK_TIME %d\n", L_MAX_LENGTH, WORK_TIME);
+  
+  /* Gettime overhead (1st round to warm cache) */
+#if 0
+  GETTIME_TIC;
+  GETTIME_TOC;
+  GETTIME_TIC;
+  GETTIME_TOC;
+  gettime_total =  clock_getdiff_nsec(spec_start, spec_stop);
+#endif
+  
   /** INIT */
-  lkInit(blknum, blkdim, shmem, cudaMode, &data, &res);
+//   log("before lkInit, data 0x%x\n", _mycast_ data);
+  GETTIME_TIC;
+  lkInit(blknum.x, blkdim.x, shmem, cudaMode, &data, &res);
+  GETTIME_TOC;
+  init_total =  clock_getdiff_nsec(spec_start, spec_stop);
+//   log("after lkInit, data 0x%x\n", _mycast_ data);
   
   /** WORK */
   int more = 1;
@@ -47,63 +70,99 @@ int main(int argc, char **argv)
  
   log("Device is ready to go!\n");
   
+  lkWaitTime1 = lkWaitTime2 = lkWaitTime3 = 0;
   while (more)
   {
     /** SMALL OFFLOAD (WORK) **/
     GETTIME_TIC;
     more = lkSmallOffloadMultiple(data, blknum.x);
-    verb("more is %d\n", more);
     GETTIME_TOC;
     assign_total += clock_getdiff_nsec(spec_start, spec_stop);
     
+    clock_gettime(CLOCK_MONOTONIC, &app_start);
     /** TRIGGER (WORK) **/
     GETTIME_TIC;
-    lkTriggerMultiple(blknum);
+    lkTriggerMultiple();
     GETTIME_TOC;
-    work_total += clock_getdiff_nsec(spec_start, spec_stop);
+    trigger_total += clock_getdiff_nsec(spec_start, spec_stop);
+    GETTIME_LOG("Partial launch time %lu\n", clock_getdiff_nsec(spec_start, spec_stop));
+    GETTIME_LOG("lkTriggerMultipleTime1 %lu\n", lkTriggerMultipleTime1);
+    GETTIME_LOG("lkTriggerMultipleTime2 %lu\n", lkTriggerMultipleTime2);
+    GETTIME_LOG("lkTriggerMultipleTime3 %lu\n", lkTriggerMultipleTime3);
+//     printf("%d flush waiting for the GPU to become ready\n", nflush);
     
-    log("Waiting for %d SMs\n", blknum.x);
-    for (unsigned int sm = 0 ; sm < blknum.x; sm++)
-    {
-      /* Profile lkWaitSM with the possibility to need to wait the GPU. */
-      /** WAIT (WORK) **/
-      GETTIME_TIC;
-      lkWaitSM(sm, blknum);
-      GETTIME_TOC;
-      wait_total += clock_getdiff_nsec(spec_start, spec_stop);
-    }
-    log("Joined %d SMs. Fetching results\n", blknum.x);
+    /** WAIT (WORK) **/
+    GETTIME_TIC;
+    lkWaitMultiple();
+    GETTIME_TOC;
+    wait_total += clock_getdiff_nsec(spec_start, spec_stop);
+    clock_gettime(CLOCK_MONOTONIC, &app_stop);
+//     printf("Joined %d SMs. Fetching results\n", blknum.x);
+    
+    /** RETRIEVE DATA (WORK) **/
+    GETTIME_TIC;
+    lkRetrieveDataMultiple(res, blknum.x);
+    GETTIME_TOC;
+    retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
+    
+    app_total += clock_getdiff_nsec(app_start, app_stop);
+    
+    /** 'Empty' wait */
+#if 0
+    lkProfiling = 1;
+    GETTIME_TIC;
+    lkWaitMultiple();
+    GETTIME_TOC;
+    wait2_total += clock_getdiff_nsec(spec_start, spec_stop);
+    lkProfiling = 0;
+#endif
 
-    for (unsigned int sm = 0 ; sm < blknum.x; sm++)
+    struct timespec ts;
+    ts.tv_sec  = 0;
+    ts.tv_nsec = 6000L;
+    if(nanosleep(&ts, NULL) < 0)
     {
-      /** RETRIEVE DATA (WORK) **/
-      GETTIME_TIC;
-      int result = lkRetrieveData(res, sm);
-      GETTIME_TOC;
-      verb("lk_h_results[%d] is %d, res is %d\n", sm, lk_h_results[sm], result);
-      retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
+      printf("Error in sleep!\n");
     }
-
+      
     num_loops++;
   } // work loop
+  
     
   /** DISPOSE (DISPOSE) **/
   GETTIME_TIC;
-  lkDispose(blknum);
+  lkDispose();
   GETTIME_TOC;
-  GETTIME_LOG("dispose %lu\n", clock_getdiff_nsec(spec_start, spec_stop));
+  dispose_total = clock_getdiff_nsec(spec_start, spec_stop);
   
   /* Print timing measurements */
-  GETTIME_LOG("copy_data(work) %lu\n", assign_total);
+#if 0
+  GETTIME_LOG("Gettime %lu\n", gettime_total);
+  GETTIME_LOG("Init Tot %lu\n", init_total);
+  GETTIME_LOG("These (AVG) numbers are performed on %d measurements\n", num_loops);
+//   GETTIME_LOG("TOT copy_data(work) %lu\n", assign_total);
   GETTIME_LOG("AVG copy_data(work) %lu\n", assign_total / num_loops);
-  GETTIME_LOG("trigger(work) %lu\n", work_total);
-  GETTIME_LOG("wait %lu\n", wait_total);
-  GETTIME_LOG("retrieve data %lu\n", retrieve_total);
+  GETTIME_LOG("AVG trigger(work) %lu\n", trigger_total / num_loops);
+//   GETTIME_LOG("AVG wait %lu\n", wait_total / (blknum.x * num_loops));
+//   GETTIME_LOG("AVG empty wait %lu\n", wait2_total / (blknum.x * num_loops));
+  GETTIME_LOG("AVG wait %lu\n", wait_total / num_loops);
+  GETTIME_LOG("AVG empty wait %lu\n", wait2_total / num_loops);
+  GETTIME_LOG("AVG retrieve data %lu\n", retrieve_total / num_loops);
+//   GETTIME_LOG("AVG wait #1 %lu\n", lkWaitTime1 / num_loops);
+//   GETTIME_LOG("AVG wait #2 %lu\n", lkWaitTime2 / num_loops);
+//   GETTIME_LOG("AVG wait #3 %lu\n", lkWaitTime3 / num_loops);
+  GETTIME_LOG("dispose %lu\n", dispose_total);
+#endif
+  
+  GETTIME_LOG("[HEADER] Gettime;Boot (Init);Alloc (Init);App alloc (Init);Launch (Init);Init (Tot);Copy data (Work);Trigger (Work);Wait (Work);Empty wait (Work);Retrieve data (Work);Dispose (Tot);\n");
+  GETTIME_LOG("[PROFILE] %lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;%lu;\n", gettime_total, boot_total, alloc_total, appalloc_total, launch_total, init_total, assign_total/num_loops, trigger_total/num_loops, wait_total/num_loops, wait2_total/num_loops, retrieve_total/num_loops, dispose_total);  
+  GETTIME_LOG("[TOTAL] %lu\n", app_total / num_loops);
+  GETTIME_LOG("[COPYIN] %lu\n", assign_total / num_loops);
   
   //printf("num_loops %d total %lu avg %lu\n", num_loops, assign_total + wait_total, (assign_total + wait_total) / num_loops);
 }
 
-void parse_cmdline(int argc, char **argv, dim3 * blknum, dim3 * blkdim, int *shmem, bool *cudaMode)
+void lkParseCmdLine(int argc, char **argv, dim3 * blknum, dim3 * blkdim, int *shmem, bool *cudaMode)
 {
   static struct option long_options[] =
   {
@@ -176,4 +235,4 @@ void parse_cmdline(int argc, char **argv, dim3 * blknum, dim3 * blkdim, int *shm
     
   } // while
   
-} // parse_cmdlines
+} // lkParseCmdLines

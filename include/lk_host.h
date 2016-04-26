@@ -6,8 +6,10 @@ int lkNumThreadsPerSM();
 int lkNumSMs();
 
 /* Memutils */
-void lkDeviceAlloc(void** pDev, size_t size);
-void lkHostAlloc(void ** pHost, size_t size);
+void lkDeviceAlloc(void **pDev, size_t size);
+void lkHostAlloc(void **pHost, size_t size);
+void lkDeviceFree(void **pDev);
+void lkHostFree(void **pHost);
 void lkMemcpyToDevice(void *dstDev, const void *srcHost, size_t count);
 void lkMemcpyFromDevice(void *dstHost, const void *srcDev, size_t count);
 

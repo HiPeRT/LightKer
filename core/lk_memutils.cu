@@ -10,6 +10,16 @@ void lkHostAlloc(void **pHost, size_t size)
   checkCudaErrors(cudaHostAlloc((void **) pHost, size, cudaHostAllocDefault));
 }
 
+void lkDeviceFree(void **pDev)
+{
+  checkCudaErrors(cudaFree(pDev));
+}
+
+void lkHostFree(void **pHost)
+{
+  checkCudaErrors(cudaFreeHost(pHost));
+}
+
 void lkMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpyKind kind)
 {
   checkCudaErrors(cudaMemcpyAsync(dst, src, count, kind, backbone_stream));
