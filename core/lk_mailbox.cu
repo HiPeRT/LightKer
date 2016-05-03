@@ -35,7 +35,8 @@ flushToDeviceAsync(void *fake)
   pthread_exit(NULL);
 } // flushToDeviceAsync
 
-int lkMailboxInit(cudaStream_t stream = 0)
+ALWAYS_INLINE int
+lkMailboxInit(cudaStream_t stream = 0)
 {
   log("\n");
   verb("sizeof(mailbox_elem_t) %lu sizeof(mailbox_t) %lu\n", sizeof(mailbox_elem_t), sizeof(mailbox_t));
@@ -52,15 +53,13 @@ int lkMailboxInit(cudaStream_t stream = 0)
   
   int rc = pthread_create(&flushThread, NULL, flushToDeviceAsync, (void *) 0);
   if (rc)
-  {
-    printf("ERROR; return code from pthread_create() is %d\n", rc);
-    exit(-1);
-  }
+    die("ERROR; return code from pthread_create() is %d\n", rc);
   
   return 0;
 } // lkMailboxInit
 
-void lkMailboxFree()
+ALWAYS_INLINE void
+lkMailboxFree()
 {
   flushThread_run = flushThread_go = 0;
   checkCudaErrors(cudaFree(d_from_device));
@@ -69,7 +68,8 @@ void lkMailboxFree()
   checkCudaErrors(cudaFreeHost(h_to_device));
 } // lkMailboxFree
 
-ALWAYS_INLINE void lkMailboxPrint(const char *fn_name, int sm)
+ALWAYS_INLINE void
+lkMailboxPrint(const char *fn_name, int sm)
 {
   log("[%s] to_device %s (%d), from_device %s (%d)\n", fn_name,
       getFlagName(lkHToDevice(sm)), lkHToDevice(sm), getFlagName(lkHFromDevice(sm)), lkHFromDevice(sm));

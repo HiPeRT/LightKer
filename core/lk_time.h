@@ -21,7 +21,6 @@ static long boot_total, alloc_total, appalloc_total, launch_total,
             wait_total, trigger_total, assign_total, retrieve_total, wait2_total,
             gettime_total, init_total, dispose_total, app_total;
             
-            
 extern long lkTriggerMultipleTime1, lkTriggerMultipleTime2, lkTriggerMultipleTime3;
 extern long lkWaitTime1, lkWaitTime2, lkWaitTime3;
 #endif  /* __LK_TIME_H__ */

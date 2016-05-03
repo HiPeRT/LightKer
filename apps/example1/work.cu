@@ -3,7 +3,6 @@
 
 void CHECK_RESULTS(const char * input_str, unsigned int num, int numThreads, int sm)
 {
-#if 0
   /* 
    * Check: each thread performed
    * int n = blockIdx.x * 100 + d_strlen((const char *) data->str);
@@ -15,16 +14,15 @@ void CHECK_RESULTS(const char * input_str, unsigned int num, int numThreads, int
     printf(" Error! sm %u expected %d, got %d\n", sm, expected_n, num);
   else
     printf(" Check passed!\n");
-#endif
 }
 
 __device__ void WORK(const char * str, unsigned int * num)
 {  
 //   printf("[WORK] blk %u thrd %u will work on '%s' WORK_TIME %u\n", blockIdx.x, threadIdx.x, str, WORK_TIME);
-  if(threadIdx.x == 0)
-    *num = 0;
+//   if(threadIdx.x == 0)
+//     *num = 0;
+//   __syncthreads();
   
-  __syncthreads();
   clock_t clock_count = WORK_TIME;
   clock_t start_clock = clock();
   clock_t clock_offset = 0;
@@ -35,9 +33,10 @@ __device__ void WORK(const char * str, unsigned int * num)
   }
   
   /* Data has the format prova_<NUM_BLOCK> */
-#if 1
+#if 0
   unsigned int n = blockIdx.x * 100 + d_strlen(str);
-  atomicAdd((int *)num, n);
+//   atomicAdd((int *)num, n);
+  *num += n;
 #endif
 }
 

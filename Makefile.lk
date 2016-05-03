@@ -17,7 +17,8 @@ NVCC_OPTS = -O2
 NVCC_OPTS += $(PARAMS)
 
 COREDIR = ${LK_HOME}/core
-INCLUDEDIR = ${LK_HOME}/include
+# INCLUDEDIR = ${LK_HOME}/include
+INCLUDEDIR = ${LK_HOME}
 
 # _device_ functions should be compiled in a single unit. FIXME
 # APPSRCS = $(APPDIR)/app.cu

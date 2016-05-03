@@ -1,4 +1,3 @@
-#include <getopt.h>
 
 /* LK internal headers */
 #include "lk_time.h"
@@ -16,12 +15,9 @@
 #include "lk_device.cu"
 #include "lk_host.cu"
 
-/* Parse ARGC */
-void lkParseCmdLine(int, char**, dim3*, dim3*, int*,  bool *);
-
 /* To debug */
+#ifndef USE_APP_MAIN
 
-extern int nflush;
 /* Main */
 int main(int argc, char **argv)
 {  
@@ -45,7 +41,10 @@ int main(int argc, char **argv)
   
   lkParseCmdLine(argc, argv, &blknum, &blkdim, &shmem, &cudaMode);
   
+  /* Used in profiling (example1 app) */
+#if defined(L_MAX_LENGTH) && defined(WORK_TIME)
   printf("L_MAX_LENGTH %d WORK_TIME %d\n", L_MAX_LENGTH, WORK_TIME);
+#endif
   
   /* Gettime overhead (1st round to warm cache) */
 #if 0
@@ -85,11 +84,10 @@ int main(int argc, char **argv)
     lkTriggerMultiple();
     GETTIME_TOC;
     trigger_total += clock_getdiff_nsec(spec_start, spec_stop);
-    GETTIME_LOG("Partial launch time %lu\n", clock_getdiff_nsec(spec_start, spec_stop));
-    GETTIME_LOG("lkTriggerMultipleTime1 %lu\n", lkTriggerMultipleTime1);
-    GETTIME_LOG("lkTriggerMultipleTime2 %lu\n", lkTriggerMultipleTime2);
-    GETTIME_LOG("lkTriggerMultipleTime3 %lu\n", lkTriggerMultipleTime3);
-//     printf("%d flush waiting for the GPU to become ready\n", nflush);
+//     GETTIME_LOG("Partial launch time %lu\n", clock_getdiff_nsec(spec_start, spec_stop));
+//     GETTIME_LOG("lkTriggerMultipleTime1 %lu\n", lkTriggerMultipleTime1);
+//     GETTIME_LOG("lkTriggerMultipleTime2 %lu\n", lkTriggerMultipleTime2);
+//     GETTIME_LOG("lkTriggerMultipleTime3 %lu\n", lkTriggerMultipleTime3);
     
     /** WAIT (WORK) **/
     GETTIME_TIC;
@@ -161,7 +159,10 @@ int main(int argc, char **argv)
   
   //printf("num_loops %d total %lu avg %lu\n", num_loops, assign_total + wait_total, (assign_total + wait_total) / num_loops);
 }
+#endif
 
+
+#include <getopt.h>
 void lkParseCmdLine(int argc, char **argv, dim3 * blknum, dim3 * blkdim, int *shmem, bool *cudaMode)
 {
   static struct option long_options[] =

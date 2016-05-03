@@ -50,7 +50,7 @@ int lkNumThreadsPerSM()
   return blkdim.x;
 }
 
-int lkNumSMs()
+int lkNumClusters()
 {
   return blknum.x;
 }
@@ -171,11 +171,8 @@ void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMo
   launch_total = clock_getdiff_nsec(spec_start, spec_stop);
     
   int rc = pthread_create(&syncThread, NULL, syncMalboxFrom, (void *) 0);
-  if (rc)
-  {
-    printf("ERROR; return code from pthread_create() is %d\n", rc);
-    exit(-1);
-  }
+  if(rc)
+    die("ERROR; return code from pthread_create() is %d\n", rc);
   
   printf("--- LIGHTKERNEL STARTED ---\n");  
   
@@ -197,7 +194,7 @@ long lkWaitTime1 = 0, lkWaitTime2 = 0, lkWaitTime3 = 0;
  * lkTriggerMultiple - Order all SMs to start working.
  */
 long lkTriggerMultipleTime1 = 0, lkTriggerMultipleTime2 = 0, lkTriggerMultipleTime3 = 0;
-int nflush;
+// int nflush;
 void lkTriggerMultiple()
 {
   struct timespec spec_start, spec_stop;
@@ -212,15 +209,16 @@ void lkTriggerMultiple()
 //     return;
   }
 #endif /* OPTIMIZE_LKWAIT */
-  nflush = 0;
+
   GETTIME_TIC;
   for(int sm=0; sm<blknum.x; sm++)
   {
-#if 1
+#if 0
+    /* This is not necessary, if you use LK "in a good way", that is, 
+       if you always "lkWaitMultiple" before issuing a lkTriggerMultiple */
     while(lkHFromDevice(sm) != THREAD_NOP)
     {
-//       lkMailboxFlushSM(false, sm);
-      nflush++;
+      lkMailboxFlushSM(false, sm);
     }
 #endif
     lkHToDevice(sm) = THREAD_WORK;

@@ -102,8 +102,6 @@ __global__ void lkUniformPollingCuda(volatile mailbox_elem_t * to_device,
   
 } // lkUniformPollingCuda
 
-
-
 /* Main kernel function, for writing "non-cuda" work function.
  * Busy waits on the GPU until the CPU notifies new work, then
  * - it acknowledges the CPU and starts the real work. When finished
@@ -116,4 +114,18 @@ __global__ void lkUniformPollingNoCuda(volatile mailbox_elem_t * to_device,
                                        lk_result_t *lk_results)
 {
   LK_WARN_NOT_SUPPORTED();
+}
+
+__device__ uint32_t lkGetClusterID()
+{
+  if(blockIdx.x != __mysmid())
+  {
+    log("I am not on the right SM!");
+  }
+  return blockIdx.x;
+}
+
+__device__ uint32_t lkGetCoreID()
+{
+  return threadIdx.x;
 }
