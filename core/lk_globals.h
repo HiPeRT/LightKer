@@ -58,12 +58,12 @@ typedef unsigned int lk_result_t;
 
 /** Mailbox flags */
 
-// for from_device:
+// from_device:
 #define THREAD_INIT             0
 #define THREAD_FINISHED         1
 #define THREAD_WORKING          2
 
-// for to_device:
+// to_device:
 #define THREAD_NOP              4
 #define THREAD_EXIT             8
 #define THREAD_WORK             16

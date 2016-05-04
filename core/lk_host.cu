@@ -63,7 +63,7 @@ int lkNumClusters()
  *            Formerly known as 'init'
  */
 void lkLaunch(void (*kernel) (volatile mailbox_elem_t *, volatile mailbox_elem_t *,  volatile data_t *, volatile res_t *, lk_result_t *),
-              data_t *data, res_t * res, lk_result_t *results,
+              data_t *devDataPtr, res_t *devResPtr, lk_result_t *results,
               dim3 blknum, dim3 blkdim, int shmem)
 {
 //   log("# Blocks %d #Threads %d SHMEM dim %d\n", blknum.x, blkdim.x, shmem);
@@ -73,17 +73,13 @@ void lkLaunch(void (*kernel) (volatile mailbox_elem_t *, volatile mailbox_elem_t
     lkHToDevice(sm) = THREAD_NOP;
   
   lkMailboxFlush(true);
-  kernel <<< blknum, blkdim, shmem, kernel_stream >>> (d_to_device, d_from_device, data, res, results);
+  kernel <<< blknum, blkdim, shmem, kernel_stream >>> (d_to_device, d_from_device, devDataPtr, devResPtr, results);
   
   // Wait for LK thread(s) to be ready to work
   for (int sm = 0; sm < blknum.x; sm++)
   {
-//     log("Waiting for SM #%d @ 0x%x %d\n", sm, _mycast_ &d_from_device[sm], h_from_device[sm]);
     while(lkHFromDevice(sm) != THREAD_NOP)
-    {
       lkMailboxFlushSM(false, sm);
-    }
-//     log("SM #%d is ready to go\n", sm);
   }
   
 //   log("Done.\n");
@@ -92,9 +88,12 @@ void lkLaunch(void (*kernel) (volatile mailbox_elem_t *, volatile mailbox_elem_t
 /*
  * lkInit - Initialization subroutine
  */
-void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMode, data_t ** data, res_t ** res)
+             
+void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMode, 
+            data_t **hostDataPtr, res_t **hostResPtr, data_t **devDataPtr, res_t **devResPtr)
 { 
   log("Number of Blocks: %d number of threads per block: %d, shared memory dim: %d\n", blknum_x, blkdim_x, shmem);
+  
   struct timespec spec_start, spec_stop;
   int deviceCount;
   dim3 tmp(blknum_x);
@@ -154,19 +153,21 @@ void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMo
   
   /* Call application-specific initialization of data
    * 'Big offload' is performed here */
-  verb("Invoke app-specific data initialization data ptr @0x%x it is 0x%x, res ptr @0x%x it is 0x%x\n",
-       _mycast_ data, _mycast_ *data, _mycast_ res, _mycast_ *res);
+  verb("Invoke app-specific data initialization hostDataPtr @0x%x it is 0x%x,hostResPtr @0x%x it is 0x%x",
+       _mycast_ hostDataPtr, _mycast_ *hostDataPtr, _mycast_ hostResPtr, _mycast_ *hostResPtr);
+  verb(" devDataPtr @0x%x it is 0x%x, devResPtr @0x%x it is 0x%x\n",
+       _mycast_ devDataPtr, _mycast_ *devDataPtr, _mycast_ devResPtr, _mycast_ *devResPtr);
   GETTIME_TIC;
-  lkInitAppData(data, res, blknum_x);
+  lkInitAppData(hostDataPtr, devDataPtr, hostResPtr, devResPtr, blknum_x);
   GETTIME_TOC;
   appalloc_total = clock_getdiff_nsec(spec_start, spec_stop);
-  verb("Allocated data 0x%x @0x%x\n", _mycast_ *data, _mycast_ data);
-  verb("Allocated res 0x%x @0x%x\n", _mycast_ *res, _mycast_ res);
+//   verb("Allocated data 0x%x @0x%x\n", _mycast_ *data, _mycast_ data);
+//   verb("Allocated res 0x%x @0x%x\n", _mycast_ *res, _mycast_ res);
   
   /* Launch phase */
   GETTIME_TIC;
   lkLaunch(cudaMode ? lkUniformPollingCuda : lkUniformPollingNoCuda,
-           *data, *res, &lk_d_results[0], blknum, blkdim, shmem);
+           *devDataPtr, *devResPtr, &lk_d_results[0], blknum, blkdim, shmem);
   GETTIME_TOC;
   launch_total = clock_getdiff_nsec(spec_start, spec_stop);
     
@@ -186,14 +187,46 @@ void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMo
  */
 void lkTriggerSM(int sm)
 {
-  LK_WARN_NOT_SUPPORTED();
-}
+  struct timespec spec_start, spec_stop;
+//   LK_WARN_NOT_SUPPORTED();
+  log("SM %d\n", sm);
+#ifdef OPTIMIZE_LKWAIT
+  if(workingSM[sm])
+  {
+    warning("SM %d is already running!\n", sm);
+//     lkWaitSM(sm);
+  }
+#endif
+
+  GETTIME_TIC;
+  lkHToDevice(sm) = THREAD_WORK;
+  GETTIME_TOC;
+  lkTriggerMultipleTime1 = clock_getdiff_nsec(spec_start, spec_stop);
+  
+//   log("Transfering all mailboxes to Device..\n");
+  GETTIME_TIC;
+  lkMailboxFlushAsync(true);
+  GETTIME_TOC;
+  lkTriggerMultipleTime2 = clock_getdiff_nsec(spec_start, spec_stop);
+  
+  
+#ifdef OPTIMIZE_LKWAIT
+  GETTIME_TIC;
+  numWorkingSM ++;
+  workingSM[sm] = 1;
+  GETTIME_TOC;
+  lkTriggerMultipleTime3 = clock_getdiff_nsec(spec_start, spec_stop);
+#endif /* OPTIMIZE_LKWAIT */
+    
+  log("Done.\n");  
+
+} // lkTriggerSM
 
 long lkWaitTime1 = 0, lkWaitTime2 = 0, lkWaitTime3 = 0;
+long lkTriggerMultipleTime1 = 0, lkTriggerMultipleTime2 = 0, lkTriggerMultipleTime3 = 0;
 /*
  * lkTriggerMultiple - Order all SMs to start working.
  */
-long lkTriggerMultipleTime1 = 0, lkTriggerMultipleTime2 = 0, lkTriggerMultipleTime3 = 0;
 // int nflush;
 void lkTriggerMultiple()
 {
@@ -236,18 +269,17 @@ void lkTriggerMultiple()
   GETTIME_TOC;
   lkTriggerMultipleTime2 = clock_getdiff_nsec(spec_start, spec_stop);
   
-  GETTIME_TIC;
 #ifdef OPTIMIZE_LKWAIT
+  GETTIME_TIC;
   numWorkingSM += blknum.x;
   for(int sm = 0; sm < blknum.x; sm++)
     workingSM[sm] = 1;
-#endif /* OPTIMIZE_LKWAIT */
   GETTIME_TOC;
   lkTriggerMultipleTime3 = clock_getdiff_nsec(spec_start, spec_stop);
+#endif /* OPTIMIZE_LKWAIT */
     
   log("Done.\n");  
 } // lkTriggerMultiple
-
 
 unsigned int lkProfiling = 0;
 /*
@@ -384,3 +416,13 @@ void lkDispose()
   log("Done.\n");
 } // lkDispose
 
+void lkHostSleep(long time_ns)
+{
+    struct timespec ts;
+    ts.tv_sec  = 0;
+    ts.tv_nsec = time_ns;
+    if(nanosleep(&ts, NULL) < 0)
+    {
+      printf("Error in sleep!\n");
+    }
+} // lkHostSleep

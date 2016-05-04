@@ -2,6 +2,11 @@
 #include "lk_utils.h"
 #include "data.h"
 
+#define applog(_s, ...)                                             \
+{                                                                   \
+  printf("[EXAMPLE1] [%s] " _s, __func__, ##__VA_ARGS__);             \
+}
+
 unsigned char DATA_ON_DEVICE = 1;
 unsigned char RES_ON_DEVICE = 1;
 
@@ -16,8 +21,8 @@ unsigned int count_iter = 0, max_iter = 10;
  * lkInitAppData - Allocate application-specific data_t using lkDeviceAlloc
  */
 void lkInitAppData(data_t **dataPtr, res_t **resPtr, int numSm)
-{ 
-  int sm;
+{
+  applog("\n");
     
   if(DATA_ON_DEVICE)
   {
@@ -41,7 +46,7 @@ void lkInitAppData(data_t **dataPtr, res_t **resPtr, int numSm)
     host_res = *resPtr;
   }
   
-  for(sm=0; sm<numSm; sm++)
+  for(int sm=0; sm<numSm; sm++)
     INIT_DATA(host_data[sm].str, sm);
 } // lkInitAppData
 
@@ -52,14 +57,9 @@ void lkInitAppData(data_t **dataPtr, res_t **resPtr, int numSm)
  */
 int lkSmallOffload(data_t *dataPtr, int sm)
 {
-//   printf("[EXAMPLE1] assigning data \"%s\" block %d sizeof(data_t) is %lu\n", host_data[sm].str, sm, sizeof(data_t));
-//   printf("[EXAMPLE1] dataPtr 0x%x\n", _mycast_ dataPtr);
-  printf("lkSmallOffload not implemented!\n");
+  applog("Not implemented!\n");
   
-//   if(DATA_ON_DEVICE)
-//     lkMemcpyToDevice(&dataPtr[sm], &host_data[sm], sizeof(data_t));
-  
-  return 1;
+  return 0;
 }
 
 /*
@@ -68,7 +68,7 @@ int lkSmallOffload(data_t *dataPtr, int sm)
  */
 int lkSmallOffloadMultiple(data_t *dataPtr, int numSm)
 {
-//   printf("[EXAMPLE1] numSm %d dataPtr 0x%x count_iter %u max_iter %u\n", numSm, _mycast_ dataPtr, count_iter, max_iter);
+//   applog(numSm %d dataPtr 0x%x count_iter %u max_iter %u\n", numSm, _mycast_ dataPtr, count_iter, max_iter);
     
   if(DATA_ON_DEVICE)
     lkMemcpyToDevice(&dataPtr[0], &host_data[0], sizeof(data_t) *numSm);
@@ -81,11 +81,11 @@ int lkSmallOffloadMultiple(data_t *dataPtr, int numSm)
  */
 __device__ int lkWorkCuda(volatile data_t *dataPtr, volatile res_t *res)
 {
-//   printf("[EXAMPLE1] Hi! I'm core %d of SM %d and I'm working on data ''%s''\n", threadIdx.x, blockIdx.x, data->str);
+//   applog(Hi! I'm core %d of SM %d and I'm working on data ''%s''\n", threadIdx.x, blockIdx.x, data->str);
 
   WORK((const char *) dataPtr->str, (unsigned int *) &res->num);
 
-//   printf("[EXAMPLE1] Block %d returns %d \n", blockIdx.x, res->num);
+//   applog(Block %d returns %d \n", blockIdx.x, res->num);
   
   return 0;
 }
@@ -95,23 +95,15 @@ __device__ int lkWorkCuda(volatile data_t *dataPtr, volatile res_t *res)
  */
 void lkRetrieveData(res_t * resPtr, int sm)
 {
-//   printf("[EXAMPLE1] sm %d \n", sm);
-  printf("lkRetrieveData not implemented!\n");
-  return;
-  
-//   if(RES_ON_DEVICE)
-//     lkMemcpyFromDevice(&host_res[sm], &resPtr[sm], sizeof(res_t));
-  
-//   CHECK_RESULTS((const char *) host_data[sm].str, resPtr[sm].num, lkNumThreadsPerSM(), sm);
+  applog("Not implemented!\n");
 }
-
 
 /*
  * lkRetrieveDataMultiple - Retrieve app results
  */
 void lkRetrieveDataMultiple(res_t * resPtr, unsigned int numSm)
 {
-//   printf("[EXAMPLE1] sm %d \n", sm);
+//   applog(sm %d \n", sm);
 
   if(RES_ON_DEVICE)
     lkMemcpyFromDevice(&host_res[0], &resPtr[0], sizeof(res_t) * numSm);
@@ -126,7 +118,7 @@ void lkRetrieveDataMultiple(res_t * resPtr, unsigned int numSm)
  */
 __device__ int lkWorkNoCuda(volatile data_t *data, volatile res_t *res)
 {
-  printf("lkWorkNoCuda not implemented!\n");
+  applog("Not implemented!\n");
   return 1;
 }
 

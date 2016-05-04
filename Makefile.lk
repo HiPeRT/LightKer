@@ -11,8 +11,7 @@ CUDA_INCLUDEPATH	 = /opt/cuda/include
 # PARAMS  += -DLK_VERBOSE
 
 NVCC=nvcc
-# NVCC_OPTS = -O0
-NVCC_OPTS = -O2
+NVCC_OPTS = -O1
 # NVCC_OPTS += -Xcompiler -Wall
 NVCC_OPTS += $(PARAMS)
 
