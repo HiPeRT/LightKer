@@ -2,7 +2,7 @@
 #define __LK_VERSION_H__
 
 #define LK_VERSION_MAJOR		0
-#define LK_VERSION_MINOR		1
+#define LK_VERSION_MINOR		2
 
 #define LK_CONTACT_NAME			"Paolo Burgio"
 #define LK_CONTACT_ORG			"HiPeRT Lab -- University of Modena and Reggio Emilia, Italy"
