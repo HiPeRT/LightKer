@@ -107,8 +107,10 @@ void lkLaunch(void (*kernel) (volatile mailbox_elem_t *, volatile mailbox_elem_t
  * lkInit - Initialization subroutine
  */
              
-void lkInit(unsigned int blknum_x, unsigned int blkdim_x, int shmem, bool cudaMode, 
-            data_t **hostDataPtr, res_t **hostResPtr, data_t **devDataPtr, res_t **devResPtr)
+void lkInit(unsigned int blknum_x, unsigned int blkdim_x,
+						int shmem, bool cudaMode, 
+						data_t **hostDataPtr, res_t **hostResPtr,
+						data_t **devDataPtr, res_t **devResPtr)
 { 
   log("Number of Blocks: %d number of threads per block: %d, shared memory dim: %d\n", blknum_x, blkdim_x, shmem);
   

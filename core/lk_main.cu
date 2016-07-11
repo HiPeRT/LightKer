@@ -76,7 +76,7 @@ int main(int argc, char **argv)
   /** INIT */
 //   log("before lkInit, data 0x%x\n", _mycast_ data);
   GETTIME_TIC;
-  lkInit(blknum.x, blkdim.x, shmem, cudaMode, &data, &res);
+  lkInit(blknum.x, blkdim.x, shmem, cudaMode, 0x0, 0x0, &data, &res);
   GETTIME_TOC;
   init_total =  clock_getdiff_nsec(spec_start, spec_stop);
 //   log("after lkInit, data 0x%x\n", _mycast_ data);
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
   {
     /** SMALL OFFLOAD (WORK) **/
     GETTIME_TIC;
-    more = lkSmallOffloadMultiple(data, blknum.x);
+    more = lkSmallOffloadMultiple(0x0, data, blknum.x);
     GETTIME_TOC;
     assign_total += clock_getdiff_nsec(spec_start, spec_stop);
     
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     
     /** RETRIEVE DATA (WORK) **/
     GETTIME_TIC;
-    lkRetrieveDataMultiple(res, blknum.x);
+    lkRetrieveDataMultiple(0x0, res, blknum.x);
     GETTIME_TOC;
     retrieve_total += clock_getdiff_nsec(spec_start, spec_stop);
     
