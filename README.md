@@ -19,8 +19,6 @@ If you plan to use LK in your project, please add a reference to this website in
 <br><br>
 > <i>Paolo Burgio, "Enabling predictable parallelism in single-GPU systems with persistent CUDA threads", in Proceedings of the work-in-progress section of 28th Euromicro Conference on Real-Time Systems (ECRTS16)</i>
 
-<img src="img/lk-ga-logo.png" style="height:20px">
-<br/>
 # Scheduled Light Kernel	
 Scheduled Light Kernel (SLK) is a version of LK used to accelerate  Genetic Algorithms. Please refer to the following paper for more information:
 <br><br>
