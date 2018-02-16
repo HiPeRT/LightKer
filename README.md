@@ -14,27 +14,23 @@ LK is distributed under <a href="https://www.gnu.org/licenses/gpl.html" target="
 Please download preliminary version 0.2 <a href="https://github.com/HiPeRT/LightKer" target="_blank">here</a>.
 
 # Use LK
-- We provide LK as free software, under GPL license with linking exception to make it usable also by proprietary SW developers.
-- If you plan to use LK in your project, please add a reference to this website in your documentation
-- If you plan to use LK in any scientific publication, please add a reference to the following paper: <i>Paolo Burgio, "Enabling predictable parallelism in single-GPU systems with persistent CUDA threads", in Proceedings of the work-in-progress section of 28th Euromicro Conference on Real-Time Systems (ECRTS16)</i>
+We provide LK as free software, under GPL license with linking exception to make it usable also by proprietary SW developers.
+If you plan to use LK in your project, please add a reference to this website in your documentation. If you plan to use LK in any scientific publication, please add a reference to the following paper:
+<br><br>
+<i>Paolo Burgio, "Enabling predictable parallelism in single-GPU systems with persistent CUDA threads", in Proceedings of the work-in-progress section of 28th Euromicro Conference on Real-Time Systems (ECRTS16)</i>
 
-
-# Scheduled Light Kernel&nbsp;&nbsp;<img src="img/lk-ga-logo.png" style="height:40px">
+<img src="img/lk-ga-logo.png" style="height:20px">
+# Scheduled Light Kernel
 Scheduled Light Kernel (SLK) is a version of LK used to accelerate  Genetic Algorithms. Please refer to the following paper for more information:
-	<br><br>
-	<i>Nicola Capodieci and Paolo Burgio, "Efficient Implementation of 
-Genetic Algorithms on GP-GPU with Scheduled Persistent CUDA Threads.", 
-in  PAAP 2015: 6-12</i>. DOI bookmark: <a href="https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html" target="_blank">https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html</a>
+<br><br>
+<i>Nicola Capodieci and Paolo Burgio, "Efficient Implementation of Genetic Algorithms on GP-GPU with Scheduled Persistent CUDA Threads.", in  PAAP 2015: 6-12</i>. DOI bookmark: <a href="https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html" target="_blank">https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html</a>
 	
-	<h2>Acknowledgements</h2>
-	<p>LK is a side research project of the <a href="http://hercules2020.eu/" target="_blank">Hercules Project</a> from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 688860. </p>
-	<p>Special thanks to Serena, who implemented the first version of LK</p>
+# Acknowledgements>
+LK is a side research project of the <a href="http://hercules2020.eu/" target="_blank">Hercules Project</a> from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 688860. 
+<br>
+Special thanks to Serena, who implemented the first version of LK
 
-	<h2>Contacts</h2>
-	- Paolo Burgio - <a href="mailto:paolo.burgio@unimore.it">paolo.burgio@unimore.it</a><br>
-	- (For Scheduled Light Kernel) Nicola Capodieci - <a href="mailto:nicola.capodieci@unimore.it">nicola.capodieci@unimore.it</a><br>
-	- Serena Ziviani -  <a href="mailto:ziviani.serena@gmail.com">ziviani.serena@gmail.com</a><br>
-
-	
-
-</body></html>
+# Contacts
+- Paolo Burgio - <a href="mailto:paolo.burgio@unimore.it">paolo.burgio@unimore.it</a><br>
+- (For Scheduled Light Kernel) Nicola Capodieci - <a href="mailto:nicola.capodieci@unimore.it">nicola.capodieci@unimore.it</a><br>
+- Serena Ziviani -  <a href="mailto:ziviani.serena@gmail.com">ziviani.serena@gmail.com</a><br>
