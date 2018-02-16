@@ -17,14 +17,14 @@ Please download preliminary version 0.2 <a href="https://github.com/HiPeRT/Light
 We provide LK as free software, under GPL license with linking exception to make it usable also by proprietary SW developers.
 If you plan to use LK in your project, please add a reference to this website in your documentation. If you plan to use LK in any scientific publication, please add a reference to the following paper:
 <br><br>
-<i>Paolo Burgio, "Enabling predictable parallelism in single-GPU systems with persistent CUDA threads", in Proceedings of the work-in-progress section of 28th Euromicro Conference on Real-Time Systems (ECRTS16)</i>
+> <i>Paolo Burgio, "Enabling predictable parallelism in single-GPU systems with persistent CUDA threads", in Proceedings of the work-in-progress section of 28th Euromicro Conference on Real-Time Systems (ECRTS16)</i>
 
 <img src="img/lk-ga-logo.png" style="height:20px">
-
-# Scheduled Light Kernel
+<br/>
+# Scheduled Light Kernel	
 Scheduled Light Kernel (SLK) is a version of LK used to accelerate  Genetic Algorithms. Please refer to the following paper for more information:
 <br><br>
-<i>Nicola Capodieci and Paolo Burgio, "Efficient Implementation of Genetic Algorithms on GP-GPU with Scheduled Persistent CUDA Threads.", in  PAAP 2015: 6-12</i>. DOI bookmark: <a href="https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html" target="_blank">https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html</a>
+> <i>Nicola Capodieci and Paolo Burgio, "Efficient Implementation of Genetic Algorithms on GP-GPU with Scheduled Persistent CUDA Threads.", in  PAAP 2015: 6-12</i>. DOI bookmark: <a href="https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html" target="_blank">https://www.computer.org/csdl/proceedings/paap/2015/9117/00/9117a006-abs.html</a>
 	
 # Acknowledgements>
 LK is a side research project of the <a href="http://hercules2020.eu/" target="_blank">Hercules Project</a> from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 688860. 
