@@ -31,7 +31,7 @@ Scheduled Light Kernel (SLK) is a version of LK used to accelerate  Genetic Algo
 # Acknowledgements
 LK is a side research project of the <a href="http://hercules2020.eu/" target="_blank">Hercules Project</a> from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 688860. 
 <br>
-Special thanks to Serena, who implemented the first version of LK
+Special thanks to [Serena](https://github.com/sere), who implemented the first version of LK
 
 # Contacts
 - Paolo Burgio - <a href="mailto:paolo.burgio@unimore.it">paolo.burgio@unimore.it</a><br>
